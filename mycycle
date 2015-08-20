@@ -4,6 +4,22 @@ use strict;
 use warnings;
 use POSIX qw(ceil);
 use Time::HiRes qw/time sleep/;
+use Getopt::Long;
+
+my $interval = 4;
+my $ncams = 3;
+my $device = "/dev/video0";
+
+GetOptions(
+	'interval=s' => \$interval,
+	'device=s' => \$device,
+	'ncams=s' => \$ncams
+    ) or exit 1;
+
+print "interval = $interval\n";
+print "ncams = $ncams\n";
+print "device = $device\n";
+
 
 sub launch {
     return if fork;
@@ -13,8 +29,6 @@ sub launch {
 
 $SIG{CHLD} = 'IGNORE';
 
-my $interval = 4;
-my $ncams = 3;
 
 while (1) {
     my $now = time();
@@ -24,8 +38,8 @@ while (1) {
     sleep $delay;
     print "\n";
     $now = $nextrun;
-    my $ncam = $now/$ncams % $interval;
+    my $ncam = $now / $interval % $ncams;
     print "now = $now, ncam = $ncam\n";
-    launch("v4l2-ctl", "-d", "/dev/video0", "-i", $ncam);
+    launch("v4l2-ctl", "-d", $device, "-i", $ncam);
 }
 
