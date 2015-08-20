@@ -1,0 +1,88 @@
+seglen=600
+shopt -s nullglob
+
+fm_record_in_empty_dirs() {
+    local station i subdir have
+    station=${1:?}
+    shift
+
+    subdir="$station"
+    mkdir -p "${subdir:?}/`date +%Y%m%d`" "${subdir:?}/`date --date=tomorrow +%Y%m%d`"
+
+    while true; do
+        echo "writing to $subdir"
+        mkdir -p $subdir
+
+        pwd
+        "$@"
+    
+        sleep 10
+    done
+}
+
+fm_ffmpeg_watchdog() {
+    local ffmpeg_pid=${1:?}
+    local watchdir=${2:?}
+    local newstate prevstate=
+
+    cd "$watchdir"
+    while true; do
+        mkdir -p "`date --date=tomorrow +%Y%m%d`"
+        newstate=`du -ksx .`
+        #newstate="y"
+        if [ x"$prevstate" = x"$newstate" ]; then
+            echo
+            echo "ffmpeg seems hung"
+            echo
+            fm_killffmpeg "$ffmpeg_pid"
+            break
+        fi
+        prevstate=$newstate
+        sleep 120
+    done
+}
+
+fm_ffmpeg() {
+    rc=1
+    local ffmpeg_pid ffmpeg_watchdog_pid
+    echo ffmpeg "$@"
+    ffmpeg "$@" &
+    ffmpeg_pid=$!
+    fm_ffmpeg_watchdog "$ffmpeg_pid" "$subdir" &
+    ffmpeg_watchdog_pid=$!
+
+    echo
+    echo "ffmpeg_pid: $ffmpeg_pid , ffmpeg_watchdog_pid: $ffmpeg_watchdog_pid , BASHPID: $BASHPID"
+    echo
+
+    rc=0
+    wait $ffmpeg_pid || rc=$?
+    kill -KILL $ffmpeg_watchdog_pid 2>/dev/null
+}
+
+fm_killffmpeg() {
+    local ffmpeg_pid
+
+    ffmpeg_pid=${1:?}
+    kill -TERM $ffmpeg_pid
+}
+
+fm_rec_cam() {
+    fm_ffmpeg -loglevel warning -y \
+        -f video4linux2 -i /dev/video0 \
+        -filter_complex "
+        [0:v]select='gte(st(0,mod(time(0)*1000,${ncams:?}*${interval:?}*1000)),2*${interval:?}*1000+300)*lt(ld(0),(2+1)*${interval:?}*1000-1)',${stampbox:?},fifo[out2];
+        [0:v]select='gte(st(0,mod(time(0)*1000,${ncams:?}*${interval:?}*1000)),1*${interval:?}*1000+300)*lt(ld(0),(1+1)*${interval:?}*1000-1)',${stampbox:?},fifo[out1];
+        [0:v]select='gte(st(0,mod(time(0)*1000,${ncams:?}*${interval:?}*1000)),0*${interval:?}*1000+300)*lt(ld(0),(0+1)*${interval:?}*1000-1)',${stampbox:?},fifo[out0]
+        " \
+        -map '[out2]' -codec mpeg4 -f segment -segment_time $seglen -strftime 1 "${subdir:?}/%Y%m%d/split2-%H-%M-%S.mkv" \
+        -map '[out1]' -codec mpeg4 -f segment -segment_time $seglen -strftime 1 "${subdir:?}/%Y%m%d/split1-%H-%M-%S.mkv" \
+        -map '[out0]' -codec mpeg4 -f segment -segment_time $seglen -strftime 1 "${subdir:?}/%Y%m%d/split0-%H-%M-%S.mkv"
+}
+
+fm_all() {
+    [ $# = 0 ] && set -- cam
+    for st in "$@"; do
+        fm_record_in_empty_dirs $st fm_rec_$st &
+    done
+}
