@@ -3,6 +3,8 @@ ncams=3
 
 switchdur=350
 codecargs="-codec mpeg4"
+codecargs="-codec h264 -preset fast" # " -b:v 100k"
+codecargs="-codec h264 -preset ultrafast" # " -b:v 100k"
 seglen=600
 
 muxerargs="-f segment -segment_time ${seglen:?} -strftime 1"
@@ -10,8 +12,7 @@ muxerargs=
 
 fontfile="/usr/share/fonts/TTF/DejaVuSans.ttf"
 
-testbox="drawtext=fontfile=${fontfile:?}: boxcolor=0x000000AA:box=1:y=line_h:fontsize=72:fontcolor='white':text='%{e\:gte(st(0,mod(time(0)*1000,3*4*1000)),0*4*1000)*lt(ld(0),(0+1)*4*1000)}'"
-stampbox="drawtext=fontfile=${fontfile:?}: boxcolor=0x000000AA:box=1:fontsize=72:fontcolor='white':text='%{localtime\:%T}.%{eif\:mod(time(0)*1000,1000)\:d\:3}'"
+stampbox="drawtext=fontfile=${fontfile:?}: boxcolor=0x000000AA:box=1:fontsize=24:fontcolor='white':text='%{localtime\:%T}.%{eif\:mod(time(0)*1000,1000)\:d\:3}'"
 
 shopt -s nullglob
 
@@ -64,7 +65,8 @@ fm_record_in_empty_dirs() {
 
         pwd
         "$@"
-    
+        
+        #break
         sleep 10
     done
 }
@@ -111,14 +113,24 @@ fm_ffmpeg() {
 fm_rec_cam() {
     local i filterstr= outmap=()
 
-    for ((i=0; i<ncams; i++)); do
+    local ncams2=$ncams
+    #ncams2=1
+
+    # ,${stampbox:?}
+    for ((i=0; i<ncams2; i++)); do
         filterstr="${filterstr}${filterstr:+;}
-        [0:v]select='gte(st(0,mod(time(0)*1000,${ncams:?}*${interval:?}*1000)),$i*${interval:?}*1000+${switchdur:?})*lt(ld(0),($i+1)*${interval:?}*1000-1)',${stampbox:?}[out$i]"
-        outmap+=(-map "[out$i]" $codecargs $muxerargs "${subdir:?}/%Y%m%d/split$i-%H-%M-%S.mkv")
+        [0:v]fps=12,select='gte(st(0,mod(time(0)*1000,${ncams:?}*${interval:?}*1000)),$i*${interval:?}*1000+${switchdur:?})*lt(ld(0),($i+1)*${interval:?}*1000-1)',select='gt(scene,0.005)',${stampbox:?}[out$i]
+        "
+        outmap+=(
+            -map "[out$i]" $codecargs $muxerargs "${subdir:?}/%Y%m%d/split$i-%H-%M-%S.mkv")
     done
 
+#        [0:v]fps=12,select='gte(st(0,mod(time(0)*1000,${ncams:?}*${interval:?}*1000)),$i*${interval:?}*1000+${switchdur:?})*lt(ld(0),($i+1)*${interval:?}*1000-1)',split=2[out$i][forscene-out$i];
+#        [forscene-out$i]select='gt(scene,0.005)'[afterscene-out$i]
+#            -map "[afterscene-out$i]" $codecargs $muxerargs "${subdir:?}/%Y%m%d/split$i-scene.mkv"
+
 # ,fps=25,fifo
-    fm_ffmpeg -loglevel warning -y -f video4linux2 -i /dev/video0 -filter_complex "$filterstr" "${outmap[@]}"
+    fm_ffmpeg -loglevel warning -y -f video4linux2 -standard PAL -t 40 -i /dev/video0 -filter_complex "$filterstr" "${outmap[@]}"
 }
 
 fm_all() {
