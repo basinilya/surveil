@@ -1,0 +1,31 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use POSIX qw(ceil);
+use Time::HiRes qw/time sleep/;
+
+sub launch {
+    return if fork;
+    exec @_;
+    die "Couldn't exec";
+}
+
+$SIG{CHLD} = 'IGNORE';
+
+my $interval = 4;
+my $ncams = 3;
+
+while (1) {
+    my $now = time();
+    my $nextrun = ceil($now / $interval) * $interval;
+    my $delay = $nextrun - $now;
+    print "now = $now, nextrun = $nextrun, delay = $delay\n";
+    sleep $delay;
+    print "\n";
+    $now = $nextrun;
+    my $ncam = $now/$ncams % $interval;
+    print "now = $now, ncam = $ncam\n";
+    launch("v4l2-ctl", "-d", "/dev/video0", "-i", $ncam);
+}
+

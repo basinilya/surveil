@@ -1,0 +1,1 @@
+ACTION=="add", SUBSYSTEM=="video4linux", ATTR{name}=="stk1160", RUN+="/usr/local/bin/my_stk1160_pal.sh"

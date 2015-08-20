@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# find
+fn_findusb() {
+    for fn_findusb_devpath in /sys/bus/usb/devices/*; do
+        read -r fn_findusb_vendor <"$fn_findusb_devpath/idVendor" && read -r fn_findusb_product <"$fn_findusb_devpath/idProduct" \
+            && [ x"$1" = x"$fn_findusb_vendor" -a x"$2" = x"$fn_findusb_product" ] && return
+    done 2>/dev/null
+    fn_findusb_devpath=
+    return 1
+}
+
+fn_findusb 05e1 0408 && echo 0 >"$fn_findusb_devpath/authorized" && echo 1 >"$fn_findusb_devpath/authorized"
+
