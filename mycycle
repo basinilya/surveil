@@ -33,18 +33,18 @@ sub launch {
 
 $SIG{CHLD} = 'IGNORE';
 
-
 while (1) {
     my $now = time();
+
+    my $ncam = $now / $interval % $ncams;
+    print "now = " . $now . ", ncam = $ncam\n";
+    launch("v4l2-ctl", "-d", $device, "-i", $ncam);
+    $now = time();
+
     my $nextrun = ceil($now / $interval) * $interval;
     my $delay = $nextrun - $now;
     print "now = $now, nextrun = $nextrun, delay = $delay\n";
-    sleep $delay;
     print "\n";
-    $now = $nextrun;
-    my $ncam = $now / $interval % $ncams;
-    print "now = " . time() . ", ncam = $ncam\n";
-    launch("v4l2-ctl", "-d", $device, "-i", $ncam);
-    print "now = " . time() . "\n";
+    sleep $delay;
 }
 
