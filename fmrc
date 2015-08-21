@@ -22,7 +22,7 @@ exdynascene="gt(scene,0.005)"
 ptswall="setpts='PTS+(RTCSTART/(TB*1000000))'"
 ptsmono="setpts='PTS-(RTCSTART/(TB*1000000))'"
 
-stampbox="drawtext=fontfile=${fontfile:?}: boxcolor=0x000000AA:box=1:fontsize=24:fontcolor='white':text='%{localtime\:%F %T}'"
+stampbox="drawtext=fontfile=${fontfile:?}: boxcolor=0x000000AA:box=1:fontsize=24:fontcolor='white':text='%{localtime\:%F %T} t\:%{e\:t}'"
 
 shopt -s nullglob
 
@@ -129,7 +129,7 @@ fm_rec_cam() {
 #exhalffps=1
 #exnotswitching=1
 #exdynascene=1
-#exncam="(between(abs(TB*pts-t),0,0.001)+1)"
+#exncam=1
 
     filterstr="[0:v]select=outputs=${ncams2:?}:expr='${exhalffps:?}*${exnotswitching:?}*${exncam:?}'"
 
