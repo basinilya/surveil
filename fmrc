@@ -5,22 +5,23 @@ switchdur=0.320
 
 seglen=600
 
-durarg="-t ${seglen:?}"
+globalargs="-loglevel warning -y -vsync passthrough"
 
-codecargs="-codec mpeg4"
+durarg=
+#durarg="-t ${seglen:?}"
+
 codecargs="-codec h264 -pix_fmt yuv422p -preset veryfast -crf 30"
+#codecargs="-codec mpeg4"
 
 muxerargs="-f segment -segment_time ${seglen:?} -strftime 1"
-muxerargs=""
+#muxerargs=""
 
 fontfile="/usr/share/fonts/TTF/DejaVuSans.ttf"
 
 exnotswitching="between(mod(t,${interval:?}),${switchdur:?},${interval:?})"
 exncam="floor(1+mod(t/${interval:?},${ncams:?}))"
-exhalffps="mod(n,2)"
 fpsfilter="fps=12.5"
 exdynascene="gt(gt(scene,0.005)+eq(mod(n,60),0),0)"
-ptswall="setpts='PTS+(RTCSTART/(TB*1000000))'"
 ptsmono="setpts='PTS-(RTCSTART/(TB*1000000))'"
 
 stampbox="drawtext=fontfile=${fontfile:?}: boxcolor=0x000000AA:box=1:fontsize=24:fontcolor='white':text='%{localtime\:%F %T}'"
@@ -127,13 +128,12 @@ fm_rec_cam() {
     local ncams2=${ncams:?}
 
 #ncams2=1
-exhalffps=1
 #exnotswitching=1
 #exdynascene=1
 #exncam=1
 
     filterstr="${filterstr}${filterstr:+;}[0:v]${fpsfilter:?},${ptsmono:?}[out-last]"
-    filterstr="${filterstr}${filterstr:+;}[0:v]${fpsfilter:?},select=outputs=${ncams2:?}:expr='${exhalffps:?}*${exnotswitching:?}*${exncam:?}'"
+    filterstr="${filterstr}${filterstr:+;}[0:v]${fpsfilter:?},select=outputs=${ncams2:?}:expr='${exnotswitching:?}*${exncam:?}'"
 
     for ((i=0; i<ncams2; i++)); do
         filterstr="${filterstr}[mid$i]"
@@ -142,10 +142,9 @@ exhalffps=1
     local day="%Y%m%d"
     local time="%H-%M-%S"
 
-    read day time<<<$(date +"$day $time")
+    #read day time<<<$(date +"$day $time")
 
     outmap+=( -map "[out-last]" -c huffyuv -f segment -segment_time 10 -segment_wrap 3 "/dev/shm/last%d.mkv" )
-    #outmap+=( -map "[out-last]" $codecargs $muxerargs "${subdir:?}/current.mkv" )
     #outmap+=( -map "[out-last]" -c huffyuv -f rawvideo /dev/null )
 
     for ((i=0; i<ncams2; i++)); do
@@ -156,7 +155,8 @@ exhalffps=1
             -map "[out$i]" $codecargs $muxerargs "${subdir:?}/${day:?}/cam$i-${time:?}.mkv" )
     done
 
-    time fm_ffmpeg -loglevel warning -y -f video4linux2 -ts abs -copyts -standard PAL $durarg -mysurvive -i "${device:?}" -filter_complex "$filterstr" "${outmap[@]}"
+    time fm_ffmpeg $globalargs \
+        -f video4linux2 -ts abs -copyts -standard PAL $durarg -mysurvive -i "${device:?}" -filter_complex "$filterstr" "${outmap[@]}"
 }
 
 fm_all() {
