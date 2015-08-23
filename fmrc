@@ -1,4 +1,4 @@
-device=/dev/video0
+device=/dev/v4l/by-id/usb-Syntek_Semiconductor_USB_2.0_Video_Capture_Controller-video-index0
 interval=4
 ncams=3
 switchdur=0.320
