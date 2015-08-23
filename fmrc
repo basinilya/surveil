@@ -132,7 +132,8 @@ exhalffps=1
 #exdynascene=1
 #exncam=1
 
-    filterstr="[0:v]${fpsfilter:?},select=outputs=${ncams2:?}:expr='${exhalffps:?}*${exnotswitching:?}*${exncam:?}'"
+    filterstr="${filterstr}${filterstr:+;}[0:v]${fpsfilter:?},${ptsmono:?}[out-last]"
+    filterstr="${filterstr}${filterstr:+;}[0:v]${fpsfilter:?},select=outputs=${ncams2:?}:expr='${exhalffps:?}*${exnotswitching:?}*${exncam:?}'"
 
     for ((i=0; i<ncams2; i++)); do
         filterstr="${filterstr}[mid$i]"
@@ -143,12 +144,16 @@ exhalffps=1
 
     read day time<<<$(date +"$day $time")
 
+    outmap+=( -map "[out-last]" -c huffyuv -f segment -segment_time 10 -segment_wrap 3 "/dev/shm/last%d.mkv" )
+    #outmap+=( -map "[out-last]" $codecargs $muxerargs "${subdir:?}/current.mkv" )
+    #outmap+=( -map "[out-last]" -c huffyuv -f rawvideo /dev/null )
+
     for ((i=0; i<ncams2; i++)); do
         filterstr="${filterstr}${filterstr:+;}
         [mid$i]select='${exdynascene:?}',${stampbox:?},${ptsmono:?}[out$i]
         "
         outmap+=(
-            -map "[out$i]" $codecargs $muxerargs "${subdir:?}/${day:?}/cam$i-${time:?}.mkv")
+            -map "[out$i]" $codecargs $muxerargs "${subdir:?}/${day:?}/cam$i-${time:?}.mkv" )
     done
 
     time fm_ffmpeg -loglevel warning -y -f video4linux2 -ts abs -copyts -standard PAL $durarg -mysurvive -i "${device:?}" -filter_complex "$filterstr" "${outmap[@]}"
