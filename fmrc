@@ -25,7 +25,8 @@ fpsfilter="fps=12.5"
 exdynascene="gt(gt(scene,0.005)+eq(mod(n,60),0),0)"
 ptsmono="setpts='PTS-(RTCSTART/(TB*1000000))'"
 
-stampbox="drawtext=fontfile=${fontfile:?}: boxcolor=0x000000AA:box=1:fontsize=24:fontcolor='white':text='%{localtime\:%F %T}'"
+stampbox="drawtext=fontfile=${fontfile:?}:boxcolor=0x000000AA:box=1:fontsize=24:fontcolor='white':text='%{localtime\:%F %T}'"
+mkidbox() { echo "drawtext=fontfile=${fontfile:?}:boxcolor=0x000000AA:box=1:fontsize=24:y=line_h:fontcolor='white':text='${1:?}'"; }
 #  t\:%{e\:t}
 
 shopt -s nullglob
@@ -102,7 +103,7 @@ fm_ffmpeg_watchdog() {
             break
         fi
         prevstate=$newstate
-        sleep 120
+        sleep 300
     done
 }
 
@@ -151,9 +152,10 @@ fm_rec_cam() {
 #virtpref
     for ((i=0; i<ncams2; i++)); do
         filterstr="${filterstr}${filterstr:+;}
-        [mid$i]select='${exdynascene:?}',${stampbox:?},${ptsmono:?}[out$i]
+        [mid$i]${ptsmono:?},`mkidbox $i`,split[virt$i][file$i];[file$i]select='${exdynascene:?}',${stampbox:?}[out$i]
         "
         outmap+=(
+            -map "[virt$i]" -f v4l2 "/dev/v4l/by-id/Loopback_video_device_$i"
             -map "[out$i]" $codecargs $muxerargs "${subdir:?}/${day:?}/cam$i-${time:?}.mkv" )
     done
 
