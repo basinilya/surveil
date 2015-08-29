@@ -1,0 +1,3 @@
+ACTION=="remove", GOTO="persistent_v4l_my_end"
+ATTR{name}=="Loopback video device *", SYMLINK+="v4l/by-id/$attr{name}", OPTIONS+="string_escape=replace"
+LABEL="persistent_v4l_my_end"
