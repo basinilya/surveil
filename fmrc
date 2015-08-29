@@ -1,4 +1,5 @@
 device=/dev/v4l/by-id/usb-Syntek_Semiconductor_USB_2.0_Video_Capture_Controller-video-index0
+virtpref=/dev/v4l/by-id/Loopback_video_device_
 interval=4
 ncams=3
 switchdur=0.320
@@ -132,9 +133,9 @@ fm_rec_cam() {
 #exdynascene=1
 #exncam=1
 
-    filterstr="${filterstr}${filterstr:+;}[0:v]${fpsfilter:?},${ptsmono:?}[out-last]"
-    filterstr="${filterstr}${filterstr:+;}[0:v]${fpsfilter:?},select=outputs=${ncams2:?}:expr='${exnotswitching:?}*${exncam:?}'"
+    #filterstr="${filterstr}${filterstr:+;}[0:v]${fpsfilter:?},${ptsmono:?}[out-last]"
 
+    filterstr="${filterstr}${filterstr:+;}[0:v]${fpsfilter:?},select=outputs=${ncams2:?}:expr='${exnotswitching:?}*${exncam:?}'"
     for ((i=0; i<ncams2; i++)); do
         filterstr="${filterstr}[mid$i]"
     done
@@ -144,9 +145,10 @@ fm_rec_cam() {
 
     #read day time<<<$(date +"$day $time")
 
-    outmap+=( -map "[out-last]" -c huffyuv -f segment -segment_time 10 -segment_wrap 3 "/dev/shm/last%d.mkv" )
+    #outmap+=( -map "[out-last]" -c huffyuv -f segment -segment_time 10 -segment_wrap 3 "/dev/shm/last%d.mkv" )
     #outmap+=( -map "[out-last]" -c huffyuv -f rawvideo /dev/null )
 
+#virtpref
     for ((i=0; i<ncams2; i++)); do
         filterstr="${filterstr}${filterstr:+;}
         [mid$i]select='${exdynascene:?}',${stampbox:?},${ptsmono:?}[out$i]
