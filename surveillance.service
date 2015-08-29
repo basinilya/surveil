@@ -1,0 +1,13 @@
+[Unit]
+Description=surveillance service
+
+[Service]
+Type=simple
+User=il
+WorkingDirectory=/var/cache/surveillance
+ExecStart=/home/il/surveil/fm all
+StandardOutput=journal
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target
