@@ -32,7 +32,7 @@ mkidbox() { echo "drawtext=fontfile=${fontfile:?}:boxcolor=0x000000AA:box=1:font
 shopt -s nullglob
 
 fm_mycycle_start() {
-    $THISDIR/mycycle --device="${device:?}" --interval="${interval:?}" --ncams="${ncams:?}" >/dev/null &
+    "$THISDIR/mycycle" --device="${device:?}" --interval="${interval:?}" --ncams="${ncams:?}" >/dev/null &
     fm_mycycle_pid=$!
 }
 
@@ -92,6 +92,7 @@ fm_ffmpeg_watchdog() {
 
     cd "$watchdir"
     while true; do
+        "$THISDIR/cleandisk" --dir . --minfree $((100*1000000)) --dry-run
         mkdir -p "`date --date=tomorrow +%Y%m%d`"
         newstate=`du -ksx .`
         #newstate="y"
