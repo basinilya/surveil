@@ -1,3 +1,4 @@
+minfree=$((100*1000000))
 device=/dev/v4l/by-id/usb-Syntek_Semiconductor_USB_2.0_Video_Capture_Controller-video-index0
 virtpref=/dev/v4l/by-id/Loopback_video_device_
 interval=4
@@ -92,7 +93,7 @@ fm_ffmpeg_watchdog() {
 
     cd "$watchdir"
     while true; do
-        "$THISDIR/cleandisk" --dir . --minfree $((100*1000000)) --dry-run
+        "$THISDIR/cleandisk" --dir . --minfree "$minfree"
         mkdir -p "`date --date=tomorrow +%Y%m%d`"
         newstate=`du -ksx .`
         #newstate="y"

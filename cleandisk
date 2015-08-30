@@ -47,13 +47,15 @@ fn_fromhuman Size
 
 freeup=$(( minfree - (Size - Used) ))
 
-printf '%10s=%s\n' "dir" "$dir"
-printf '%10s=%12d\n' "Size" "$Size"
-printf '%10s=%12d\n' "Used" "$Used"
-printf '%10s=%12d\n' "minfree" "$minfree"
+fmt='%-10s= %12d\n'
+
+printf '%-10s= %s\n' "dir" "$dir"
+printf "$fmt" "Size" "$Size"
+printf "$fmt" "Used" "$Used"
+printf "$fmt" "minfree" "$minfree"
 
 if [ $freeup -gt 0 ]; then
-    printf '%10s=%12d\n' "freeup" "$freeup"
+    printf "$fmt" "freeup" "$freeup"
     #TODO: declare -A links_by_inode
     cd "$dir"
     exec 4< <(find . -mount -depth ! -path "./lost+found" ! -path "." -printf '%b %i %n %y %T@ %p\0' | LC_ALL=C sort -z -k 5)
