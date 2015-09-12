@@ -1,9 +1,11 @@
 minfree=$((100*1000000))
 device=/dev/v4l/by-id/usb-Syntek_Semiconductor_USB_2.0_Video_Capture_Controller-video-index0
 virtpref=/dev/v4l/by-id/Loopback_video_device_
-interval=4
+interval=2
 ncams=3
 switchdur=0.320
+#minscene=0.005
+minscene=0.003
 
 seglen=600
 
@@ -23,7 +25,7 @@ fontfile="/usr/share/fonts/TTF/DejaVuSans.ttf"
 exnotswitching="between(mod(t,${interval:?}),${switchdur:?},${interval:?})"
 exncam="floor(1+mod(t/${interval:?},${ncams:?}))"
 fpsfilter="fps=12.5"
-exdynascene="gt(gt(scene,0.005)+eq(mod(n,60),0),0)"
+exdynascene="gt(gt(scene,${minscene:?})+eq(mod(n,60),0),0)"
 ptsmono="setpts='PTS-(RTCSTART/(TB*1000000))'"
 
 stampbox="drawtext=fontfile=${fontfile:?}:boxcolor=0x000000AA:box=1:fontsize=24:fontcolor='white':text='%{localtime\:%F %T}'"
@@ -146,18 +148,17 @@ fm_rec_cam() {
     local day="%Y%m%d"
     local time="%H-%M-%S"
 
-    #read day time<<<$(date +"$day $time")
 
     #outmap+=( -map "[out-last]" -c huffyuv -f segment -segment_time 10 -segment_wrap 3 "/dev/shm/last%d.mkv" )
-    #outmap+=( -map "[out-last]" -c huffyuv -f rawvideo /dev/null )
 
 #virtpref
     for ((i=0; i<ncams2; i++)); do
         filterstr="${filterstr}${filterstr:+;}
-        [mid$i]${ptsmono:?},`mkidbox $i`,split[virt$i][file$i];[file$i]select='${exdynascene:?}',${stampbox:?}[out$i]
+        [mid$i]${ptsmono:?},`mkidbox $i`,split=3[virt$i][pic$i][file$i];[file$i]select='${exdynascene:?}',${stampbox:?}[out$i]
         "
         outmap+=(
             -map "[virt$i]" -f v4l2 "/dev/v4l/by-id/Loopback_video_device_$i"
+            -map "[pic$i]" -updatefirst 1 "/dev/shm/cam$i.bmp"
             -map "[out$i]" $codecargs $muxerargs "${subdir:?}/${day:?}/cam$i-${time:?}.mkv" )
     done
 
