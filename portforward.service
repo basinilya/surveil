@@ -1,0 +1,13 @@
+[Unit]
+Description=tunnel
+
+[Service]
+Type=simple
+User=il
+KillMode=control-group
+ExecStart=/home/il/surveil/portforward/bin/portforward -p 010-basinsrv
+StandardOutput=journal
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target
