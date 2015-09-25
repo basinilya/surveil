@@ -1,0 +1,93 @@
+# /etc/init.d/portforward example:
+if false; then
+
+#!/bin/bash
+#
+# portforward:	AAAA aa aaa
+#
+# chkconfig: 2345 4 99
+# description:  aaaa aaa aa
+#
+# 
+#
+
+pf_basedir=/home/portfwd/portforward
+user=portfwd
+
+. $pf_basedir/conf/portforward-svc
+fi
+
+# ln -s ../init.d/portforward /etc/rc2.d/S99portforward-svc.PROFILE
+if false; then
+    for f in /home/portfwd/portforward/conf/profiles/*.conf; do
+        linkname=portforward-svc.`basename "$f" .conf`
+        for K in 0 1 6; do
+            ln -sf ../init.d/portforward /etc/rc$K.d/K01$linkname
+        done
+
+        for S in 2 3 4 5; do
+            ln -sf ../init.d/portforward /etc/rc$S.d/S99$linkname
+        done
+    done
+fi
+
+#UID=`id | sed 's/^[^=]*=\([^(]*\)(.*/\1/'`
+USER=`id | sed 's/^[^(]*(\([^)]*\)).*/\1/'`
+
+echo "USER = $USER"
+if [ "$user" != "$USER" -a 0 = "$UID" ]; then
+  THISDIR=`cd "\`dirname \"$0\"\`" && pwd`
+  THISSCRIPT=`basename "$0"`
+  exec su - $user -c "$THISDIR/$THISSCRIPT $*"
+fi
+
+
+scriptname=`basename "$0"`
+PROFILE=${scriptname#*portforward-svc.}
+
+[ x"$scriptname" = x"$PROFILE" ] && {
+  echo "ERROR: bad script name: $scriptname">&2
+  exit 1
+}
+
+pf_confdir=$pf_basedir/conf
+. "$pf_confdir/default.conf"
+pidfile="$pf_piddir/$PROFILE.pid"
+
+
+RETVAL=0
+
+case "$1" in
+ start)
+	echo $"Starting up port forward daemon $PROFILE: "
+	"$pf_bindir/portforward" -d -p "$PROFILE"
+	RETVAL=$?
+	echo 
+	;;
+ stop)
+	echo $"Shutting down port forward daemon $PROFILE: "
+	filepid=
+	read filepid <"$pidfile"
+	if [ -z "$filepid" ]; then
+	  echo "ERROR: invalid pidfile">&2
+	  exit 1
+	fi
+	kill -TERM -$filepid
+	while [ -d /proc/$filepid ]; do
+	  sleep 1
+	done
+	RETVAL=0
+	echo 
+ 	;;
+ restart)
+  "$0" stop
+  sleep 1
+  "$0" start
+	;;
+ *)
+ 	echo $"Usage: $scriptname {start|stop|restart}"
+	exit 1
+	;;
+esac
+
+exit $RETVAL

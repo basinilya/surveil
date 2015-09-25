@@ -1,0 +1,33 @@
+#!/bin/bash
+set -e
+
+pf_basedir=`cd "\`dirname \"$0\"\`/.." && pwd`
+pf_confdir=$pf_basedir/conf
+
+. "$pf_confdir/default.conf"
+
+cd "$pf_confdir/profiles"
+
+lsopt=
+if [ "stop" = "$1" ]; then
+  for f in `ls -r *.conf`; do
+      set +e
+      pidfile="$pf_piddir/`basename $f .conf`.pid"
+	    filepid=
+	    read filepid <"$pidfile"
+	    if [ -z "$filepid" ]; then
+	      echo "ERROR: invalid pidfile">&2
+	    else
+	      echo kill -TERM -$filepid
+  	    kill -TERM -$filepid
+	    fi
+      sleep 3
+  done
+else
+  for f in `ls *.conf`; do
+      set +e
+      "$pf_bindir/portforward" -p `basename $f .conf` -d
+      sleep 3
+  done
+fi
+

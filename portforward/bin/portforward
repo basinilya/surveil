@@ -1,0 +1,291 @@
+#!/bin/bash
+
+set -o errtrace
+set -e
+exec 102>&2
+
+function errtrap {     es=$?;     echo "ERROR line ${mylineno:-$1}: ${tstname:+test $tstname: }Command ${mycommand:+'$mycommand' }exited with status $es.">&102; }; trap 'errtrap $LINENO' ERR
+
+_fatal() {
+  echo "ERROR line ${BASH_LINENO[0]}: $@" >&102
+  exit 1
+}
+
+fatal=_fatal
+
+_dbg() {
+    echo "debug: $$:" "$@"
+}
+
+dbg=_dbg
+
+usage()
+{
+    echo "usage: portforward [-d] -p profile" >&2
+}
+
+unset DAEMON PROFILE
+
+#
+# standard getopts routine.
+#
+while getopts "hdp:" OPTION
+do
+     case $OPTION in
+         d)
+            DAEMON=x
+            $dbg "daemon mode"
+            ;;
+         p)
+            PROFILE=$OPTARG
+            ;;
+         h)
+            usage
+            exit
+            ;;
+         ?)
+            echo >&2
+            usage >&2
+            exit 1
+            ;;
+     esac
+done
+
+[ -z "$PROFILE" ] && $fatal "profile not specified"
+
+pf_basedir=`cd "\`dirname \"$0\"\`/.." && pwd`
+pf_confdir=$pf_basedir/conf
+
+if [ "$DAEMON" -a -z "$pf_lockpid" ]; then
+    $dbg "I'm not a forked child"
+
+    . "$pf_confdir/default.conf"
+    pidfile="$pf_piddir/$PROFILE.pid"
+    $dbg "pidfile = $pidfile"
+
+    [ -e "$pidfile" ] && {
+        read filepid <"$pidfile"
+        $dbg "pidfile already exists, filepid=$filepid"
+        [ -d "/proc/$filepid" ] && $fatal "process with this pid exists"
+        rm -f "$pidfile"
+    }
+
+    logfile="$pf_logdir/$PROFILE.log"
+    #logfile=/dev/fd/2
+    $dbg "logfile = $logfile"
+
+    portforward="$pf_bindir/portforward"
+
+    cd /
+
+    sleep 2 &
+    pf_lockpid=$!
+    export pf_lockpid
+    $dbg "pf_lockpid=$pf_lockpid"
+
+    setsid "$portforward" "$@" 0<&- 1>>"$logfile" 2>&1 &
+    pid=$!
+    $dbg "pid=$pid"
+
+    wait $pf_lockpid 2>/dev/null || true
+
+    read filepid <"$pidfile"
+    $dbg "filepid=$filepid"
+
+    [ $pid = "$filepid" ] || $fatal "bad pid"
+
+    exit 0
+else
+    { exec 3>/dev/tty; } 2>/dev/null && {
+        exec 3>&-
+
+        $dbg "SSH_ASKPASS requires detached tty"
+        $dbg "Running myself under setsid"
+
+        run_and_exit() {
+            prev_chld_pid=$!
+            trap '
+                set +e
+                echo "$$: got signal">&2
+                [ "$!" = "$prev_chld_pid" ] || {
+                    echo "$$: kill -TERM -$!" >&2
+                    kill -TERM -$!
+                    wait $! 2>/dev/null || true
+                    kill -TERM -$! 2>/dev/null || true # for some reason on Solaris children dont receive the first signal
+                }
+            ' EXIT
+            setsid "$0" "$@" &
+            $dbg '$! = '$!
+
+            rc=0
+            wait $! || rc=$?
+            $dbg "rc = $rc"
+
+            trap - EXIT
+            exit $rc
+        }
+
+        case `tty` in
+        /dev/cons[0-9]*)
+            $dbg "On Cygwin an fd cannot be inherited by a detached process, if it's a windows console handler"
+            if [ -t 1 -o -t 2 ]; then
+                $dbg "one of the handles is console"
+                $dbg "piping 'setsid' to '| cat'"
+                [ -t 1 ] || exec 3>&1 # save redirected stdout
+                (
+                    [ -t 2 ] && exec 2>&1 # redirect stderr from tty to pipe
+                    exec 1>&3 || true # restore redirected stdout
+                    run_and_exit "$@"
+                ) | (
+                  trap "" INT
+                  cat
+                )
+                trap "" INT
+                exit ${PIPESTATUS[0]}
+            fi
+            ;;
+        esac
+        run_and_exit "$@"
+    }
+
+    . "$pf_confdir/default.conf"
+    unset pidfile
+fi
+
+trap '$dbg exiting; [ -z "$pidfile" ] || rm -f "$pidfile"' EXIT
+
+case $BASH_VERSION in
+  ''|0.*|1.*|2.*|3.*)
+    noeof_start() {
+        # generic noeof
+        # set -e unreliable; using AND-OR list
+        noeof_fifo=`mktemp -u`                               && \
+        mkfifo "$noeof_fifo"                                 || return $?
+        "$@" <"$noeof_fifo" &
+        exec 3>"$noeof_fifo"                                 && \
+        rm "$noeof_fifo"
+    }
+    ;;
+  *)
+    noeof_start() {
+        # noeof with coproc
+        # set -e unreliable; using AND-OR list
+        $dbg noeof_start coproc && \
+        exec 3>&1                                            && \
+        coproc "$@" >&3                                      && \
+        eval "exec 3>&${COPROC[1]} ${COPROC[1]}>&- ${COPROC[0]}<&-"
+    }
+    ;;
+esac
+
+keepalives() {
+    prev_chld_pid=$!
+    trap '
+        set +e
+        $dbg "got signal"
+        [ "$!" = "$prev_chld_pid" ] || {
+            $dbg "kill -TERM $!"
+            kill -TERM $!
+            wait $! 2>/dev/null || true
+        }
+    ' EXIT
+    while true; do
+        sleep 300 &
+        wait $! || true
+        echo "keepalive:"
+        echo "date" >&3
+    done
+}
+
+_keepalives_start() {
+    $dbg "_keepalives_start"
+    keepalives &
+    keepalives_pid=$!
+    $dbg "keepalives_pid = $keepalives_pid"
+}
+
+_keepalives_kill() {
+    $dbg "_keepalives_kill"
+    kill -TERM $keepalives_pid 2>/dev/null || true
+    wait $keepalives_pid 2>/dev/null || true
+}
+
+noeof() {
+    $dbg "noeof"
+    #set cat
+    noeof_start "$@" || return $?
+    noeof_pid=$!
+    $dbg "noeof_pid = $noeof_pid"
+    $keepalives_start || return $?
+    noeof_rc=0
+    wait $noeof_pid || noeof_rc=$?
+    exec 3>&-
+    $keepalives_kill || return $?
+    return $noeof_rc
+}
+
+while true; do
+
+    pf_ssh_port=
+    . "$pf_confdir/default.conf"
+    . "$pf_confdir/ports.conf"
+    . "$pf_confdir/profiles/$PROFILE.conf"
+
+    chmod 700 $pf_ssh_confdir 2>/dev/null || true
+    chmod 600 $pf_ssh_confdir/* 2>/dev/null || true
+
+    cmd="ssh"
+
+    if [ -z "$pf_ssh_pass" ]; then
+        cmd="$cmd -o BatchMode=yes"
+    else
+        DISPLAY=x
+        SSH_ASKPASS=$pf_bindir/fakeaskpass
+        export DISPLAY SSH_ASKPASS pf_ssh_pass
+        cmd="$cmd -o BatchMode=no"
+    fi
+
+    keepalives_start=
+    keepalives_kill=
+    if [ ! 0 -eq "$pf_ssh_keepalive" ]; then
+        if [ ! 0 -eq "$pf_supports_opt_ServerAliveInterval" ]; then
+            cmd="$cmd -o ServerAliveInterval=60"
+        else
+            keepalives_start=_keepalives_start
+            keepalives_kill=_keepalives_kill
+            pf_supports_opt_N=0
+        fi
+    fi
+
+    if [ 0 -eq "$pf_supports_opt_N" ]; then
+        cmd="noeof $cmd"
+    else
+        cmd="$cmd -N"
+    fi
+
+    if [ ! -z "$pf_ssh_port" ]; then
+        pf_ssh_port="-p $pf_ssh_port"
+    fi
+
+    cmd="$cmd -T -g -o StrictHostKeyChecking=yes $pf_ssh_port $pf_ssh_extra_args $pf_ssh_userhost $pf_ports"
+
+    date
+
+    echo $cmd
+
+    export pf_ssh_confdir
+
+    if [ "$pf_lockpid" ]; then
+        # I'm a forked child
+        pidfile="$pf_piddir/$PROFILE.pid"
+        echo $$ >"$pidfile"
+        kill $pf_lockpid
+        unset pf_lockpid # do this once
+    fi
+
+    rc=0
+    $cmd || rc=$?
+    test $rc != 127 # command not found
+
+    sleep 60
+done

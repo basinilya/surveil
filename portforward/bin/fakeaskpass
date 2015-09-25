@@ -1,0 +1,7 @@
+#!/bin/sh
+{
+echo "********** fakepass ************"
+echo "$@"
+echo "********** fakepass ************"
+} >&2
+printf %s "$pf_ssh_pass"
