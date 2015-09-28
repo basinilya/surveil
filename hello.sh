@@ -4,7 +4,8 @@ set -e
 set -o pipefail
 function errtrap {     es=$?;     echo "ERROR line $1: Command exited with status $es.">&2; }; trap 'errtrap $LINENO' ERR
 
-exec 5>&1 1> >(logger -t cgi) 2>&1
+exec 5>&1 1>&2
+exec 1> >(logger -t cgi) 2>&1
 
 #This code for getting code from post data is from http://oinkzwurgl.org/bash_cgi and
 #was written by Phillippe Kehi <phkehi@gmx.net> and flipflip industries
@@ -33,7 +34,7 @@ function cgi_decodevar()
 
 saveIFS=$IFS
 IFS='&'
-for kv in $QUERY_STRING; do
+for kv in ${QUERY_STRING:?}; do
     case $kv in
     cam=*|date=*|time=*|ext=*)
     cgi_decodevar "${kv#*=}"
@@ -96,7 +97,9 @@ feed() {
 
 while true; do
 prev=
+shopt -s nullglob
 for f in */"$cam"-*.mkv; do
+    #echo "$f"
     if [[ "$desiredfirst" < "$f" ]]; then
         [ -z "$prev" ] && break 2
         feed "$prev" "$desiredfirst"
