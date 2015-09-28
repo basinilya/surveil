@@ -51,13 +51,23 @@ echo
 cd /var/cache/surveil/cam
 
 desiredfirst="$date/$cam-$time.mkv"
+while true; do
 prev=
 for f in */"$cam"-*.mkv; do
     if [[ "$desiredfirst" < "$f" ]]; then
-        echo "$f"
+        [ -z "$prev" ] && break 2
+        echo "$prev"
+	desiredfirst=$f
+	continue 2
     fi
     #echo "$f"
     prev=$f
 done
+echo "$f last"
+break
+done
+
+echo not found
+
 
 exit 0
