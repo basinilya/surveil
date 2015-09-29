@@ -1,0 +1,13 @@
+service tailf
+{
+        disable         = no
+        bind            = 127.0.0.1
+        socket_type     = stream
+        protocol        = tcp
+        log_on_failure += USERID
+        server          = /home/il/surveil/tailf.sh
+        user            = il
+        instances       = UNLIMITED
+        wait            = no
+        log_on_success  =
+}
