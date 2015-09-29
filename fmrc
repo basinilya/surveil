@@ -55,14 +55,14 @@ fm_monitor_frontend() {
             ;;
         'CLOSE_WRITE,CLOSE')
             echo "END retrieving file $d$f"
-            if [ -n "pids["$d$f"]" ]; then
+            if [ -n "${pids["$d$f"]}" ]; then
                 prevsz=0
                 while true; do
                     sleep 30
                     sz=`stat -c %s "$d$f"`
                     if [ x"$sz" = x"$prevsz" ]; then
                         echo "file '$d$f' stopped growing; killing ssh"
-                        kill ${pids["$d$f"]}
+                        kill "${pids["$d$f"]}"
                         break
                     fi
                     prevsz=$sz
