@@ -99,7 +99,8 @@ feed() {
         echo starting encoder
 	set -- ffmpeg -loglevel warning -y -f yuv4mpegpipe -vcodec rawvideo -i - -codec h264 -pix_fmt yuv422p -preset veryfast -crf 30 -f flv -
 	echo "$@"
-        [ x"$debug" = x"" ] || exec 4> >("$@" >&5)
+        exec 4>/dev/null
+        [ x"$debug" = x"" ] && exec 4> >("$@" >&5)
 	encoder_started=x
 	echo
 	"${a[@]}" >&4
@@ -112,23 +113,21 @@ feed() {
 while true; do
 prev=
 shopt -s nullglob
+f=
 for f in */"$cam"-*.mkv; do
     #echo "$f"
     if [[ "$desiredfirst" < "$f" ]]; then
         [ -z "$prev" ] && break 2
         feed "$prev" "$desiredfirst"
+        desiredfirst=$f
 	#exit 0
-	desiredfirst=$f
 	continue 2
     fi
     #echo "$f"
     prev=$f
 done
-feed "$f" "$f"
+[ -z "$f" ] || feed "$f" "$desiredfirst"
 break
 done
-
-echo not found
-
 
 exit 0
