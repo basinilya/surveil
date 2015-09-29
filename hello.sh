@@ -32,11 +32,17 @@ function cgi_decodevar()
     return
 }
 
+cam=
+date=
+time=
+ext=
+debug=
+
 saveIFS=$IFS
 IFS='&'
 for kv in ${QUERY_STRING:?}; do
     case $kv in
-    cam=*|date=*|time=*|ext=*)
+    cam=*|date=*|time=*|ext=*|debug=*)
     cgi_decodevar "${kv#*=}"
     eval "${kv%%=*}=\$cgi_decodevar_val"
     ;;
@@ -44,10 +50,17 @@ for kv in ${QUERY_STRING:?}; do
 done
 IFS=$saveIFS
 
+if [ x"$debug" != x"" ]; then
+    exec 1>&5 2>&1
+    echo "Content-type: text/plain"
+    echo ""
+fi
+
 echo cam=$cam
 echo date=$date
 echo time=$time
 echo ext=$ext
+echo debug=$debug
 
 echo
 
@@ -77,6 +90,7 @@ feed() {
     fi
     local a=( ffmpeg -loglevel warning $seekargs -i "$infile" -vf fps=12.5 -f yuv4mpegpipe -vcodec rawvideo - )
     echo "${a[@]}"
+    [ x"$debug" = x"" ] || a=( sleep 2 )
     if [ -z "$encoder_started" ]; then
         exec 0</dev/null
         >&5 echo "Content-type: video/x-flv"
@@ -85,7 +99,7 @@ feed() {
         echo starting encoder
 	set -- ffmpeg -loglevel warning -y -f yuv4mpegpipe -vcodec rawvideo -i - -codec h264 -pix_fmt yuv422p -preset veryfast -crf 30 -f flv -
 	echo "$@"
-        exec 4> >("$@" >&5)
+        [ x"$debug" = x"" ] || exec 4> >("$@" >&5)
 	encoder_started=x
 	echo
 	"${a[@]}" >&4
