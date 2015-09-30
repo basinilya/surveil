@@ -99,7 +99,7 @@ fm_monitor_frontend() {
             ;;
         esac
     done < <(
-        exec ssh -oServerAliveInterval=300 localhost /home/il/surveil/fm monitor_backend </dev/null
+        exec ssh -oServerAliveInterval=300 dvr /home/il/surveil/fm monitor_backend </dev/null
     )
     sleep 10
     done
