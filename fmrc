@@ -35,6 +35,39 @@ mkidbox() { echo "drawtext=fontfile=${fontfile:?}:boxcolor=0x000000AA:box=1:font
 
 shopt -s nullglob
 
+repl_prompt='give me filename in the form: "file: $filename"'
+repl_last_line='file contents follow...'
+
+fm_repl_getclip_backend() {
+    local s clip
+    # save logger as &5
+    # restore socket as &2
+    exec 5>&1 1>&4 2>&4
+    echo "$repl_prompt"
+    read -r s
+    s="${s%$'\r'}"
+    case $s in
+    'file: '*)
+    ;;
+    *)
+    echo "bad command"
+    exit 1
+    ;;
+    esac
+    cd "$dir"
+    clip="${s#file: }"
+    echo "opening file: $clip" | sed -n l
+    exec 6<"$clip"
+    echo "$repl_last_line"
+    exec 2>&5
+    tail --pid=$$ -c +1 -f "$clip" <&6 &
+    exec 6<&- 1>&- 4>&-
+    while true; do
+        read -t 5 -N 1 || [ $? -le 128 ] && break # 1:read-error; 142:timeout
+        [ -e /proc/$! ] || break
+    done
+}
+
 fm_monitor_backend() {
     cd "${dir:?}"
     exec inotifywait -m -r . -e create -e close_write
