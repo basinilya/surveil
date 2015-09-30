@@ -37,6 +37,7 @@ shopt -s nullglob
 
 repl_prompt='give me filename in the form: "file: $filename"'
 repl_last_line='file contents follow...'
+repl_openmsg='opening file: '
 
 fm_repl_getclip_backend() {
     local s clip
@@ -56,26 +57,25 @@ fm_repl_getclip_backend() {
     esac
     cd "$dir"
     clip="${s#file: }"
-    echo "opening file: $clip" | sed -n l
+    echo "$repl_openmsg$clip"
     exec 6<"$clip"
     echo "$repl_last_line"
     exec 2>&5
     tail --pid=$$ -c +1 -f "$clip" <&6 &
     exec 6<&- 1>&- 4>&-
-    while true; do
-        read -t 5 -N 1 || [ $? -le 128 ] && break # 1:read-error; 142:timeout
-        [ -e /proc/$! ] || break
+    prevbytes=-1
+    while read -r -t 240 bytes && [ x"$prevbytes" != x"$bytes" ]; do
+        prevbytes=$bytes
     done
 }
 
 fm_monitor_backend() {
     cd "${dir:?}"
-    exec inotifywait -m -r . -e create -e close_write
+    exec inotifywait -m -r . -e create
 }
 
 fm_monitor_frontend() {
-    local d e f pid
-    local -A pids
+    local d e f s pid
     cd "/var/cache/surveil/cam"
     while true; do
     while read d e f; do
@@ -83,29 +83,23 @@ fm_monitor_frontend() {
         'CREATE')
             echo "retrieving file $d$f"
             mkdir -p "$d"
-            </dev/null ssh -q -oServerAliveInterval=300 localhost 'tail --pid=${PPID:?} -c +1 -f "'"$dir/$d$f"'"' >>"$d$f" &
-            pids["$d$f"]=$!
-            ;;
-        'CLOSE_WRITE,CLOSE')
-            echo "END retrieving file $d$f"
-            if [ -n "${pids["$d$f"]}" ]; then
-                prevsz=0
-                while true; do
-                    sleep 30
-                    sz=`stat -c %s "$d$f"`
-                    if [ x"$sz" = x"$prevsz" ]; then
-                        echo "file '$d$f' stopped growing; killing ssh"
-                        kill "${pids["$d$f"]}"
-                        break
-                    fi
-                    prevsz=$sz
-                done &
-                unset pids["$d$f"]
-            fi
+            {
+                echo "file: $d$f"
+                while read -r s; do
+                    s="${s%$'\r'}"
+                    >&2 printf "%s\n" "$s"
+                    case $s in
+                    "$repl_last_line") break;;
+                    "$repl_prompt"|"$repl_openmsg"*) : ;;
+                    *) exit 1;;
+                    esac
+                done
+                exec pv -n -i200 >>"$d$f" 2>&0
+            } </dev/tcp/localhost/tailf 1>&0 &
             ;;
         esac
     done < <(
-        </dev/null ssh -oServerAliveInterval=300 localhost /home/il/surveil/fm monitor_backend
+        exec ssh -oServerAliveInterval=300 localhost /home/il/surveil/fm monitor_backend </dev/null
     )
     sleep 10
     done
