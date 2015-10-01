@@ -21,6 +21,8 @@ codecargs="-codec h264 -pix_fmt yuv422p -preset veryfast -crf 30"
 muxerargs="-f segment -segment_time ${seglen:?} -strftime 1"
 #muxerargs=""
 
+denoise="hqdn3d=luma_spatial=24.0"
+
 fontfile="/usr/share/fonts/TTF/DejaVuSans.ttf"
 
 exnotswitching="between(mod(t,${interval:?}),${switchdur:?},${interval:?})"
@@ -224,8 +226,11 @@ fm_rec_cam() {
 
 #virtpref
     for ((i=0; i<ncams2; i++)); do
+        denoisenow=
+        [ $i -eq 2 ] && denoisenow="$denoise,"
+
         filterstr="${filterstr}${filterstr:+;}
-        [mid$i]${ptsmono:?},`mkidbox $i`,split=3[virt$i][pic$i][file$i];[file$i]select='${exdynascene:?}',${stampbox:?}[out$i]
+        [mid$i]${ptsmono:?},`mkidbox $i`,split=3[virt$i][pic$i][file$i];[file$i]select='${exdynascene:?}',${denoisenow}${stampbox:?}[out$i]
         "
         outmap+=(
             -map "[virt$i]" -f v4l2 "/dev/v4l/by-id/Loopback_video_device_$i"
