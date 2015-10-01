@@ -142,7 +142,7 @@ fm_record() {
 
     cd "${recdir:?}"
     subdir="."
-    mkdir -p "${subdir:?}/`date +%Y%m%d`" "${subdir:?}/`date --date=tomorrow +%Y%m%d`"
+    mkdir -p "${subdir:?}/`date --date=tomorrow +%Y%m%d`" "${subdir:?}/`date +%Y%m%d`"
 
     if [ "x$1" = x"fm_rec_cam" ]; then
         fm_mycycle_start
