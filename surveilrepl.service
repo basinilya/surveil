@@ -1,0 +1,12 @@
+[Unit]
+Description=surveillance replication service
+
+[Service]
+Type=simple
+User=il
+ExecStart=/home/il/surveil/fm monitor_frontend
+StandardOutput=journal
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target
