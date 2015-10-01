@@ -1,4 +1,5 @@
-dir="/var/cache/surveillance/cam"
+recdir="/var/cache/surveillance/cam"
+repldst="/var/cache/surveil/cam"
 minfree=$((100*1000000))
 device=/dev/v4l/by-id/usb-Syntek_Semiconductor_USB_2.0_Video_Capture_Controller-video-index0
 virtpref=/dev/v4l/by-id/Loopback_video_device_
@@ -57,7 +58,7 @@ fm_repl_getclip_backend() {
     exit 1
     ;;
     esac
-    cd "$dir"
+    cd "$recdir"
     clip="${s#file: }"
     echo "$repl_openmsg$clip"
     exec 6<"$clip"
@@ -72,13 +73,13 @@ fm_repl_getclip_backend() {
 }
 
 fm_monitor_backend() {
-    cd "${dir:?}"
+    cd "${recdir:?}"
     exec inotifywait -m -r . -e create
 }
 
 fm_monitor_frontend() {
     local d e f s pid
-    cd "/var/cache/surveil/cam"
+    cd "${repldst:?}"
     while true; do
     while read d e f; do
         case $e in
@@ -133,16 +134,14 @@ fm_killwdog() {
     fi
 }
 
-fm_record_in_empty_dirs() {
-    local station i subdir have
+fm_record() {
+    local i subdir have
     ffmpeg_pid=
     fm_mycycle_pid=
     ffmpeg_watchdog_pid=
 
-    station=${1:?}
-    shift
-
-    subdir="$station"
+    cd "${recdir:?}"
+    subdir="."
     mkdir -p "${subdir:?}/`date +%Y%m%d`" "${subdir:?}/`date --date=tomorrow +%Y%m%d`"
 
     if [ "x$1" = x"fm_rec_cam" ]; then
@@ -151,10 +150,9 @@ fm_record_in_empty_dirs() {
     trap 'fm_mycycle_stop; fm_killffmpeg; fm_killwdog;' EXIT
 
     while true; do
-        echo "writing to $subdir"
         mkdir -p $subdir
+        echo "writing to `cd "$subdir" && pwd`"
 
-        pwd
         "$@"
         [ x"$rc" = x"0" ] || sleep 10
         #break
@@ -240,13 +238,6 @@ fm_rec_cam() {
 
     time fm_ffmpeg $globalargs \
         -f video4linux2 -ts abs -copyts -standard PAL $durarg -mysurvive -i "${device:?}" -filter_complex "$filterstr" "${outmap[@]}"
-}
-
-fm_all() {
-    [ $# = 0 ] && set -- cam
-    for st in "$@"; do
-        fm_record_in_empty_dirs $st fm_rec_$st
-    done
 }
 
 fm_resetup() {

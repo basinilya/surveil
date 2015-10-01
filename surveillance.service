@@ -4,8 +4,7 @@ Description=surveillance service
 [Service]
 Type=simple
 User=il
-WorkingDirectory=/var/cache/surveillance
-ExecStart=/home/il/surveil/fm all
+ExecStart=/home/il/surveil/fm record fm_rec_cam
 StandardOutput=journal
 StandardError=inherit
 
