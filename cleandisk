@@ -69,7 +69,7 @@ if [ $freeup -gt 0 ]; then
     exec 4< <(find . -mount -path ./lost+found -prune -o ! -path "./lost+found*" ! -path "." $mtimearg -printf '%b %i %n %y %T@ %p\0' | LC_ALL=C sort -z -k5,5 -k6r )
     while read -d '' -r sz inode nlinks type mtime p <&4; do
         sz=$((sz*512))
-        >&2 echo "deleting $p (mtime=$mtime)"
+        echo "deleting $p (mtime=$mtime)"
         rmcmd=rmdir
         [ $type = d ] || rmcmd=rm
         [ "$dryrun" ] && rmcmd=true
