@@ -51,8 +51,9 @@ fn_fromhuman() {
 
 fn_fromhuman Used
 fn_fromhuman Size
+fn_fromhuman Avail
 
-freeup=$(( minfree - (Size - Used) ))
+freeup=$(( minfree - Avail ))
 
 fmt='%-10s= %12d\n'
 
