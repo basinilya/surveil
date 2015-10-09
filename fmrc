@@ -97,7 +97,8 @@ fm_monitor_frontend() {
                     *) exit 1;;
                     esac
                 done
-                exec pv -n -i200 >>"$d$f" 2>&0
+		set -o noclobber
+                exec pv -n -i200 >"$d$f" 2>&0
             } </dev/tcp/localhost/tailf 1>&0 &
             ;;
         esac
