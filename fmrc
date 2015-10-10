@@ -84,9 +84,9 @@ fm_monitor_frontend() {
     while read d e f; do
         case $e in
         'CREATE')
+            if mkdir -p "$d"; then # could be disk full
             echo "retrieving file $d$f"
-            mkdir -p "$d"
-            {
+	    {
                 echo "file: $d$f"
                 while read -r s; do
                     s="${s%$'\r'}"
@@ -100,6 +100,7 @@ fm_monitor_frontend() {
 		set -o noclobber
                 exec pv -n -i200 >"$d$f" 2>&0
             } </dev/tcp/localhost/tailf 1>&0 &
+	    fi
             ;;
         esac
     done < <(
