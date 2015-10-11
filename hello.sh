@@ -87,7 +87,7 @@ case $ext in
     fmtargs='-f mp4 -frag_duration 10000000'
     ;;
 *)
-    contenttype=$(awk -v ext="avi" '!/^ *#/ { if ($2 == ext) { print $1; exit; } }' /etc/mime.types) || true
+    contenttype=$(awk -v ext="$ext" '!/^ *#/ { if ($2 == ext) { print $1; exit; } }' /etc/mime.types) || true
     [ -z "$contenttype" ] && contenttype='application/octet-stream'
     ;;
 esac
