@@ -1,5 +1,7 @@
 #!/bin/bash
 
+headers_sent=
+
 set -e
 set -o pipefail
 function errtrap {     es=$?;     echo "ERROR line $1: Command exited with status $es.">&2; }; trap 'errtrap $LINENO' ERR
@@ -62,6 +64,32 @@ echo time=$time
 echo ext=$ext
 echo debug=$debug
 
+fmtargs="-f ${ext:?}"
+codecargs='-codec h264 -pix_fmt yuv422p -preset veryfast -crf 30'
+contenttype=
+filterargs='-vf fps=12.5'
+
+case $ext in
+'flv')
+    contenttype='video/x-flv'
+    ;;
+'mkv')
+    contenttype='video/x-matroska'
+    fmtargs='-f matroska'
+    ;;
+'webm')
+    contenttype='video/webm'
+    codecargs=
+    filterargs= # 12.5fps too much for real time webm encoding
+    ;;
+'mp4')
+    contenttype='video/mp4'
+    fmtargs='-f mp4 -frag_duration 10000000'
+    ;;
+esac
+echo "fmtargs=$fmtargs"
+echo "contenttype=$contenttype"
+
 echo
 
 cd /var/cache/surveil/cam
@@ -88,25 +116,24 @@ feed() {
     if [ -n "${2}" -a x"${1:?}" != x"${2}" ]; then
         seekargs="-ss $((`epoch "$2"` - `epoch "$1"`))"
     fi
-    local a=( ffmpeg -loglevel warning $seekargs -i "$infile" -vf fps=12.5 -f yuv4mpegpipe -vcodec rawvideo - )
+    local a=( ffmpeg -loglevel warning $seekargs -i "$infile" $filterargs -f avi -acodec pcm_s16le -vcodec rawvideo - )
     echo "${a[@]}"
     [ x"$debug" = x"" ] || a=( sleep 2 )
     if [ -z "$encoder_started" ]; then
         exec 0</dev/null
-        >&5 echo "Content-type: video/x-flv"
+        >&5 echo "Content-type: ${contenttype:?}"
         >&5 echo ""
+        headers_sent=x
 
         echo starting encoder
-	set -- ffmpeg -loglevel warning -y -f yuv4mpegpipe -vcodec rawvideo -i - -codec h264 -pix_fmt yuv422p -preset veryfast -crf 30 -f flv -
-	echo "$@"
+        set -- ffmpeg -loglevel warning -y -f avi -i - $codecargs ${fmtargs:?} -
+        echo "$@"
         exec 4>/dev/null
         [ x"$debug" = x"" ] && exec 4> >("$@" >&5)
-	encoder_started=x
-	echo
-	"${a[@]}" >&4
-    else
-        "${a[@]}" | tail -n +2 >&4
+        encoder_started=x
+        echo
     fi
+	"${a[@]}" >&4
     echo done
 }
 
