@@ -1,7 +1,10 @@
 #!/bin/bash
 
+shopt -s nullglob
+for fontfile in /[u]sr/share/fonts/dejavu/DejaVuSans.ttf /[u]sr/share/fonts/TTF/DejaVuSans.ttf; do :; break; done
+
 echo "generating some test data..."
-for ((i=0;i<4;i++)); do ffmpeg -loglevel warning -y -f lavfi -i testsrc=s=720x576:r=12:d=4 -pix_fmt yuv422p -vf "drawtext=fontfile=/usr/share/fonts/TTF/DejaVuSans.ttf:boxcolor=0x000000AA:box=1:fontsize=24:y=line_h:fontcolor='white':text='$i'" test$i.mkv; done
+for ((i=0;i<4;i++)); do ffmpeg -loglevel warning -y -f lavfi -i testsrc=s=720x576:r=12:d=4 -pix_fmt yuv422p -vf "drawtext=fontfile=${fontfile:?}:boxcolor=0x000000AA:box=1:fontsize=24:y=line_h:fontcolor='white':text='$i'" test$i.mkv; done
 echo "done"
 
 fn_concat_init() {
