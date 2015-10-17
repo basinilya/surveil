@@ -1,12 +1,5 @@
 #!/bin/bash
 
-echo "generating some test data..."
-i=0; for c in red yellow green blue; do
-    ffmpeg -loglevel warning -y -f lavfi -i testsrc=s=720x576:r=12:d=4 -pix_fmt yuv422p -vf "drawbox=w=50:h=w:t=w:c=${c:?}" test$i.mkv
-    ((i++));
-done
-echo "done"
-
 fn_concat_init() {
     echo "fn_concat_init"
     concat_pls=`mktemp -u -p . concat.XXXXXXXXXX.txt`
@@ -47,13 +40,18 @@ timeout 60s ffmpeg -y -re -loglevel warning -i "${concat_pls:?}" -pix_fmt yuv422
 
 ffplaypid=$!
 
-fn_concat_feed test0.mkv
-fn_concat_feed test1.mkv
-fn_concat_feed test2.mkv
-fn_concat_feed test3.mkv
+
+echo "generating some test data..."
+i=0; for c in red yellow green blue; do
+    ffmpeg -loglevel warning -y -f lavfi -i testsrc=s=720x576:r=12:d=4 -pix_fmt yuv422p -vf "drawbox=w=50:h=w:t=w:c=${c:?}" test$i.mkv
+    fn_concat_feed test$i.mkv
+    ((i++));
+    echo
+done
+echo "done"
 
 fn_concat_end
 
 wait "${ffplaypid:?}"
 
-echo "encoding done"
+echo "done encoding all.mkv"
