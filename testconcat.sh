@@ -1,10 +1,10 @@
 #!/bin/bash
 
-shopt -s nullglob
-for fontfile in /[u]sr/share/fonts/dejavu/DejaVuSans.ttf /[u]sr/share/fonts/TTF/DejaVuSans.ttf; do :; break; done
-
 echo "generating some test data..."
-for ((i=0;i<4;i++)); do ffmpeg -loglevel warning -y -f lavfi -i testsrc=s=720x576:r=12:d=4 -pix_fmt yuv422p -vf "drawtext=fontfile=${fontfile:?}:boxcolor=0x000000AA:box=1:fontsize=24:y=line_h:fontcolor='white':text='$i'" test$i.mkv; done
+i=0; for c in red yellow green blue; do
+    ffmpeg -loglevel warning -y -f lavfi -i testsrc=s=720x576:r=12:d=4 -pix_fmt yuv422p -vf "drawbox=w=50:h=w:t=w:c=${c:?}" test$i.mkv
+    ((i++));
+done
 echo "done"
 
 fn_concat_init() {
@@ -42,8 +42,7 @@ fn_concat_end() {
 
 fn_concat_init
 
-echo "launching ffmpeg..."
-#timeout 60s ffplay -loglevel warning "${concat_pls:?}" &
+echo "launching ffmpeg ... all.mkv"
 timeout 60s ffmpeg -y -re -loglevel warning -i "${concat_pls:?}" -pix_fmt yuv422p all.mkv &
 
 ffplaypid=$!
