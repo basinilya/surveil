@@ -88,13 +88,15 @@ echo "debug=$debug"
 
 
 fmtargs="-f ${ext:?`nultrap`}"
-codecargs='-codec h264 -pix_fmt yuv422p -preset veryfast -crf 30'
+vcodecargs='-vcodec h264 -pix_fmt yuv422p -preset veryfast -crf 30'
+acodecargs=
 contenttype=
 filterargs='-vf fps=12.5'
 
 case $ext in
 'flv')
     contenttype='video/x-flv'
+    acodecargs='-ar 44100'
     ;;
 'mkv')
     contenttype='video/x-matroska'
@@ -102,7 +104,7 @@ case $ext in
     ;;
 'webm')
     contenttype='video/webm'
-    codecargs=
+    vcodecargs=
     filterargs= # 12.5fps too much for real time webm encoding
     ;;
 'mp4')
@@ -155,7 +157,7 @@ feed() {
         headers_sent=x
 
         echo starting encoder
-        set -- ffmpeg -loglevel warning -y -f avi -i - $codecargs ${fmtargs:?`nultrap`} -
+        set -- ffmpeg -loglevel warning -y -f avi -i - $vcodecargs $acodecargs ${fmtargs:?`nultrap`} -
         echo "$@"
         exec 4>/dev/null
         [ x"$debug" = x"" ] && exec 4> >("$@" >&5)
