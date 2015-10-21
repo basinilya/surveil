@@ -124,7 +124,6 @@ echo
 cd "${dir:?`nultrap`}"
 
 desiredfirst="$date/$cam-$time.dat"
-echo "desiredfirst=$desiredfirst"
 epoch() {
     local f=${1:?`nultrap`}
     f=${f%.*}
@@ -134,10 +133,8 @@ epoch() {
     f=${f//-/:}
     date -d "$f" +%s
 }
-#epoch $desiredfirst
 
 echo
-#exit 0
 
 encoder_started=
 
@@ -168,24 +165,56 @@ feed() {
     echo done
 }
 
-while true; do
-prev=
 shopt -s nullglob
-f=
-for f in */"$cam"-*.*; do
-    #echo "$f"
-    if [[ "$desiredfirst" < "$f" ]]; then
-        [ -z "$prev" ] && break 2
-        feed "$prev" "$desiredfirst"
-        desiredfirst=$f
-	#exit 0
-	continue 2
+
+prev=
+
+while true; do
+    f=
+    echo "scanning directory; desiredfirst=$desiredfirst"
+    for f in */"$cam"-*.*; do
+        #echo "$f"
+        if [[ "$desiredfirst" < "$f" ]]; then
+            if [ -z "$prev" ]; then
+                echo "oldest file '$f' is newer than desired"
+                exit 0
+            fi
+            feed "$prev" "$desiredfirst"
+            desiredfirst=$f
+        	break 2
+        fi
+        # "$desiredfirst" >= "$f"
+        prev=$f
+    done
+
+    if [ -z "$f" ]; then
+        echo "next file does not exist yet. sleeping..."
+        sleep 10
+    else
+        echo "feeding the last file"
+        feed "$f" "$desiredfirst"
+        prev=$f
+        break
     fi
-    #echo "$f"
-    prev=$f
 done
-[ -z "$f" ] || feed "$f" "$desiredfirst"
-break
+
+while true; do
+    f=
+    g=
+    echo "scanning directory; prev=$prev"
+    for f in */"$cam"-*.*; do
+        #echo "$f"
+        if [[ "${prev:?`nultrap`}" < "$f" ]]; then
+            feed "$f" "$f"
+            prev=$f
+            g=x
+        fi
+    done
+
+    if [ -z "$g" ]; then
+        echo "next file does not exist yet. sleeping..."
+        sleep 10
+    fi
 done
 
 exit 0
