@@ -2,11 +2,32 @@
 
 headers_sent=
 
+switchplain() {
+    exec 1>&5 2>&1
+    echo "Content-type: text/plain"
+    echo ""
+    headers_sent=x
+}
+
 set -e
 set -o pipefail
-function errtrap {     es=$?;     echo "ERROR line $1: Command exited with status $es.">&2; }; trap 'errtrap $LINENO' ERR
 
+nultrap() {
+    if [ -z "$headers_sent" ]; then
+        switchplain
+    fi
+    echo "parameter null or not set"
+}
+
+errtrap() {
+    es=$?
+    if [ -z "$headers_sent" ]; then
+        switchplain
+    fi
+    echo "ERROR line $1: Command exited with status $es.">&2
+}
 exec 5>&1 1>&2
+trap 'errtrap $LINENO' ERR
 exec 1> >(logger -t cgi) 2>&1
 
 #This code for getting code from post data is from http://oinkzwurgl.org/bash_cgi and
@@ -34,37 +55,39 @@ function cgi_decodevar()
     return
 }
 
-cam=
-date=
-time=
-ext=
-debug=
+for s in cam date time ext dir debug; do
+    eval "$s="
+done
 
 saveIFS=$IFS
 IFS='&'
-for kv in ${QUERY_STRING:?}; do
+for kv in ${QUERY_STRING:?`nultrap`}; do
     case $kv in
-    cam=*|date=*|time=*|ext=*|debug=*)
-    cgi_decodevar "${kv#*=}"
-    eval "${kv%%=*}=\$cgi_decodevar_val"
+    cam=*|date=*|time=*|ext=*|dir=*|debug=*)
+    eval "v=\$${kv%%=*}"
+    if [ -z "$v" ]; then
+        cgi_decodevar "${kv#*=}"
+        eval "${kv%%=*}=\$cgi_decodevar_val"
+    fi
     ;;
     esac
 done
 IFS=$saveIFS
 
 if [ x"$debug" != x"" ]; then
-    exec 1>&5 2>&1
-    echo "Content-type: text/plain"
-    echo ""
+    switchplain
 fi
 
-echo cam=$cam
-echo date=$date
-echo time=$time
-echo ext=$ext
-echo debug=$debug
+echo "QUERY_STRING=$QUERY_STRING"
+echo "cam=$cam"
+echo "date=$date"
+echo "time=$time"
+echo "ext=$ext"
+echo "dir=$dir"
+echo "debug=$debug"
 
-fmtargs="-f ${ext:?}"
+
+fmtargs="-f ${ext:?`nultrap`}"
 codecargs='-codec h264 -pix_fmt yuv422p -preset veryfast -crf 30'
 contenttype=
 filterargs='-vf fps=12.5'
@@ -96,14 +119,16 @@ echo "contenttype=$contenttype"
 
 echo
 
-cd /var/cache/surveil/cam
+cd "${dir:?`nultrap`}"
 
-desiredfirst="$date/$cam-$time.mkv"
+desiredfirst="$date/$cam-$time.dat"
 echo "desiredfirst=$desiredfirst"
 epoch() {
-    local f=${1:?}
+    local f=${1:?`nultrap`}
     f=${f%.*}
-    f="${f%/*} ${f: -8}"
+    local t=${f##*/}
+    t=${t:$((${#cam}+1))}
+    f="${f%/*} $t"
     f=${f//-/:}
     date -d "$f" +%s
 }
@@ -115,9 +140,9 @@ echo
 encoder_started=
 
 feed() {
-    local infile=${1:?}
+    local infile=${1:?`nultrap`}
     local seekargs=
-    if [ -n "${2}" -a x"${1:?}" != x"${2}" ]; then
+    if [ -n "${2}" -a x"${1:?`nultrap`}" != x"${2}" ]; then
         seekargs="-ss $((`epoch "$2"` - `epoch "$1"`))"
     fi
     local a=( ffmpeg -loglevel warning $seekargs -i "$infile" $filterargs -f avi -acodec pcm_s16le -vcodec rawvideo - )
@@ -125,12 +150,12 @@ feed() {
     [ x"$debug" = x"" ] || a=( sleep 2 )
     if [ -z "$encoder_started" ]; then
         exec 0</dev/null
-        >&5 echo "Content-type: ${contenttype:?}"
+        >&5 echo "Content-type: ${contenttype:?`nultrap`}"
         >&5 echo ""
         headers_sent=x
 
         echo starting encoder
-        set -- ffmpeg -loglevel warning -y -f avi -i - $codecargs ${fmtargs:?} -
+        set -- ffmpeg -loglevel warning -y -f avi -i - $codecargs ${fmtargs:?`nultrap`} -
         echo "$@"
         exec 4>/dev/null
         [ x"$debug" = x"" ] && exec 4> >("$@" >&5)
@@ -145,7 +170,7 @@ while true; do
 prev=
 shopt -s nullglob
 f=
-for f in */"$cam"-*.mkv; do
+for f in */"$cam"-*.*; do
     #echo "$f"
     if [[ "$desiredfirst" < "$f" ]]; then
         [ -z "$prev" ] && break 2
