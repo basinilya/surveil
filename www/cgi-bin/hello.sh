@@ -200,7 +200,7 @@ onfile() {
                 exit 0
             fi
             feed "$prevfile" "$desiredfirst"
-            feed "$curfile" "$desiredfirst"
+            feed "$curfile" "${curfile%.*}"
         elif [ -z "$nextfile" ]; then
             feed "$curfile" "$desiredfirst"
         fi
