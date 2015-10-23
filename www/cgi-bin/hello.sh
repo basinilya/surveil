@@ -123,7 +123,7 @@ echo
 
 cd "${dir:?`nultrap`}"
 
-desiredfirst="$date/$cam-$time.dat"
+desiredfirst="$date/$cam-$time"
 epoch() {
     local f=${1:?`nultrap`}
     f=${f%.*}
@@ -139,9 +139,11 @@ echo
 encoder_started=
 
 feed() {
+    prevfed=$1
+    fed=x
     local infile=${1:?`nultrap`}
     local seekargs=
-    if [ -n "${2}" -a x"${1:?`nultrap`}" != x"${2}" ]; then
+    if [ -n "${2}" -a x"${1%.*}" != x"${2}" ]; then
         seekargs="-ss $((`epoch "$2"` - `epoch "$1"`))"
     fi
     local a=( ffmpeg -loglevel warning $seekargs -i "$infile" $filterargs -f avi -acodec pcm_s16le -vcodec rawvideo - )
@@ -167,54 +169,71 @@ feed() {
 
 shopt -s nullglob
 
-prev=
+if false; then
+cat <<'EOF'
+В общем случае надо скормить файл, который новее предыдущего скормленного.
 
-while true; do
-    f=
-    echo "scanning directory; desiredfirst=$desiredfirst"
-    for f in */"$cam"-*.*; do
-        #echo "$f"
-        if [[ "$desiredfirst" < "$f" ]]; then
-            if [ -z "$prev" ]; then
-                echo "oldest file '$f' is newer than desired"
+Последний файл, возможно, надо скармливать особым способом через tail -f.
+
+Если предыдущего скормленного файла не было, надо найти первый файл, который новее желаемого и скормить предшествующий ему файл.
+Но если предшествующего файла нет, вернуть ошибку. 
+
+Когда файлы кончатся, надо перезапустить цикл.
+Если файлов нет вообще, надо подождать и перезапустить цикл.
+
+Если есть только 1 файл, и он новее, надо вернуть ошибку.
+Если есть только 1 файл, и он не новее, надо скормить его.
+EOF
+fi
+
+
+# desiredfirst
+
+onfile() {
+    [ -n "$curfile" ] || return 0
+    #echo "prevfile=$prevfile; curfile=$curfile; nextfile=$nextfile"
+    if [ -z "$prevfed" ]; then
+        if [[ "$desiredfirst" < "${curfile%.*}" ]]; then
+            echo "found first file: desiredfirst=$desiredfirst; curfile=$curfile"
+            if [ -z "$prevfile" ]; then
+                echo "oldest file '$curfile' is newer than desired"
                 exit 0
             fi
-            feed "$prev" "$desiredfirst"
-            desiredfirst=$f
-        	break 2
+            feed "$prevfile" "$desiredfirst"
+            feed "$curfile" "$desiredfirst"
+        elif [ -z "$nextfile" ]; then
+            feed "$curfile" "$desiredfirst"
         fi
-        # "$desiredfirst" >= "$f"
-        prev=$f
-    done
-
-    if [ -z "$f" ]; then
-        echo "next file does not exist yet. sleeping..."
-        sleep 10
-    else
-        echo "feeding the last file"
-        feed "$f" "$desiredfirst"
-        prev=$f
-        break
+        #
+    elif [[ "$prevfed" < "$curfile" ]]; then
+        feed "$curfile" "${curfile%.*}"
+        #
     fi
-done
+    #echo
+    #
+    #
+    #
+}
+
+prevfed=
+
+#for nextfile in 20151023/cam1-17-05-44.mkv; do
 
 while true; do
-    f=
-    g=
-    echo "scanning directory; prev=$prev"
-    for f in */"$cam"-*.*; do
-        #echo "$f"
-        if [[ "${prev:?`nultrap`}" < "$f" ]]; then
-            feed "$f" "$f"
-            prev=$f
-            g=x
-        fi
+    prevfile=
+    curfile=
+    nextfile=
+    fed=
+    for nextfile in */"$cam"-*.*; do
+        onfile
+        prevfile=$curfile
+        curfile=$nextfile
     done
-
-    if [ -z "$g" ]; then
+    curfile=$nextfile
+    nextfile=
+    onfile
+    if [ -z "$fed" ]; then
         echo "next file does not exist yet. sleeping..."
         sleep 10
     fi
 done
-
-exit 0
