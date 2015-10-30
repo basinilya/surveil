@@ -11,7 +11,7 @@ minscene=0.003
 
 seglen=600
 
-globalargs="-loglevel warning -y -vsync passthrough"
+globalargs="-loglevel warning -y -vsync vfr"
 
 durarg=
 #durarg="-t ${seglen:?}"
@@ -23,6 +23,7 @@ muxerargs="-f segment -segment_time ${seglen:?} -strftime 1"
 #muxerargs=""
 
 denoise="hqdn3d=luma_spatial=24.0"
+#denoise=
 
 fontfile="/usr/share/fonts/TTF/DejaVuSans.ttf"
 
@@ -225,16 +226,25 @@ fm_rec_cam() {
 
 #virtpref
     for ((i=0; i<ncams2; i++)); do
-        denoisenow=
-        [ $i -eq 2 ] && denoisenow="$denoise,"
+
+        local outname_pic="[pic$i]"
+        #outname_pic=
+
+        local denoisenow=
+        [ $i -eq 2 ] && denoisenow="${denoise}${denoise:+,}"
+
+        local splitnow=2
+
+        outmap+=( -map "[virt$i]" -f v4l2 "/dev/v4l/by-id/Loopback_video_device_$i" )
+        if [ -n "${outname_pic}" ]; then
+            outmap+=( -map "[pic$i]" -updatefirst 1 "/dev/shm/cam$i.bmp" )
+            ((splitnow++))
+        fi
+        outmap+=( -map "[out$i]" $codecargs $muxerargs "${subdir:?}/${day:?}/cam$i-${time:?}.mkv" )
 
         filterstr="${filterstr}${filterstr:+;}
-        [mid$i]${ptsmono:?},`mkidbox $i`,split=3[virt$i][pic$i][file$i];[file$i]select='${exdynascene:?}',${denoisenow}${stampbox:?}[out$i]
+        [mid$i]${ptsmono:?},`mkidbox $i`,split=${splitnow:?}[virt$i]${outname_pic}[file$i];[file$i]select='${exdynascene:?}',${denoisenow}${stampbox:?}[out$i]
         "
-        outmap+=(
-            -map "[virt$i]" -f v4l2 "/dev/v4l/by-id/Loopback_video_device_$i"
-            -map "[pic$i]" -updatefirst 1 "/dev/shm/cam$i.bmp"
-            -map "[out$i]" $codecargs $muxerargs "${subdir:?}/${day:?}/cam$i-${time:?}.mkv" )
     done
 
     time fm_ffmpeg $globalargs \
