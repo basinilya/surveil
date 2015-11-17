@@ -29,6 +29,6 @@ while true; do
     echo rc=$rc
 
     [ $rc = 0 ] && break
-    [ $rc = 20 ] && kill -INT $$ # bash ignores SIGINT if child handled it
+    [ $rc = 20 ] && kill -INT $BASHPID # bash ignores SIGINT if child handled it
     sleep 60
 done
