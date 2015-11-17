@@ -22,12 +22,13 @@ while true; do
 #        --quiet \
 
     rsync \
-        -v \
+        -v --progress \
         -r --times --append $(for i in +1 +0 -1; do echo --exclude=`date -d "${i}hour" +/\%Y\%m\%d/"*"-\%H-"??-??.*"`; done) \
         rsync://localhost:10873/surveillance/cam/ /var/cache/surveil/cam/ || rc=$?
 
     echo rc=$rc
 
     [ $rc = 0 ] && break
+    [ $rc = 20 ] && kill -INT $$
     sleep 60
 done
