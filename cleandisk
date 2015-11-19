@@ -101,6 +101,7 @@ fmt='%-10s= %12d\n'
 printf '%-10s= %s\n' "dir" "$dir"
 printf "$fmt" "Size" "$Size"
 printf "$fmt" "Used" "$Used"
+printf "$fmt" "Avail" "$Avail"
 printf "$fmt" "minfree" "$minfree"
 printf '%-10s= %s\n' "findargs" "${findargs[*]}"
 
