@@ -11,7 +11,7 @@ minscene=0.003
 
 seglen=600
 
-globalargs="-loglevel warning -y -vsync vfr"
+globalargs="-loglevel error -y -vsync vfr"
 
 durarg=
 #durarg="-t ${seglen:?}"
@@ -146,7 +146,7 @@ fm_record() {
     cd "${recdir:?}"
     subdir="."
 
-    if [ "x$1" = x"fm_rec_cam" ]; then
+    if [ "x$1" = x"fm_rec_cam" -a x"$ncams" != x"1" ]; then
         fm_mycycle_start
     fi
     trap 'fm_mycycle_stop; fm_killffmpeg; fm_killwdog;' EXIT
