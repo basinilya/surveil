@@ -235,7 +235,7 @@ fm_rec_cam() {
 
         local splitnow=2
 
-        outmap+=( -map "[virt$i]" -f v4l2 "/dev/v4l/by-id/Loopback_video_device_$i" )
+        outmap+=( -map "[virt$i]" -f v4l2 "${virtpref:?}$i" )
         if [ -n "${outname_pic}" ]; then
             outmap+=( -map "[pic$i]" -updatefirst 1 "/dev/shm/cam$i.bmp" )
             ((splitnow++))
