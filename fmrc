@@ -5,6 +5,8 @@ device=/dev/v4l/by-id/usb-Syntek_Semiconductor_USB_2.0_Video_Capture_Controller-
 virtpref=/dev/v4l/by-id/Loopback_video_device_
 interval=2
 ncams=1
+ncam_beg=3
+
 switchdur=0.320
 #minscene=0.005
 minscene=0.003
@@ -209,17 +211,13 @@ fm_ffmpeg() {
 fm_rec_cam() {
     local i filterstr= outmap=()
 
-    local ncams2=${ncams:?}
-
-#ncams2=1
-#exnotswitching=1
-#exdynascene=1
-#exncam=1
-
     #filterstr="${filterstr}${filterstr:+;}[0:v]${fpsfilter:?},${ptsmono:?}[out-last]"
 
-    filterstr="${filterstr}${filterstr:+;}[0:v]${fpsfilter:?},select=outputs=${ncams2:?}:expr='${exnotswitching:?}*${exncam:?}'"
-    for ((i=0; i<ncams2; i++)); do
+    filterstr="${filterstr}${filterstr:+;}[0:v]${fpsfilter:?},select=outputs=${ncams:?}:expr='${exnotswitching:?}*${exncam:?}'"
+
+    local ncam_end=$((ncam_beg + ncams))
+
+    for ((i=ncam_beg; i<ncam_end; i++)); do
         filterstr="${filterstr}[mid$i]"
     done
 
@@ -230,7 +228,7 @@ fm_rec_cam() {
     #outmap+=( -map "[out-last]" -c huffyuv -f segment -segment_time 10 -segment_wrap 3 "/dev/shm/last%d.mkv" )
 
 #virtpref
-    for ((i=0; i<ncams2; i++)); do
+    for ((i=ncam_beg; i<ncam_end; i++)); do
 
         local outname_pic="[pic$i]"
         outname_pic=
