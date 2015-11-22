@@ -2,7 +2,7 @@
 # Contributor: DrZaius <lou at fakeoutdoorsman.com>
 
 pkgname=ffmpeg-mysurvive
-pkgver=r74576.b2b1963
+pkgver=r76646.9d05dcd
 pkgrel=1
 pkgdesc="Universal multimedia toolkit"
 arch=('i686' 'x86_64')
@@ -12,7 +12,7 @@ depends=('alsa-lib' 'bzip2' 'freetype2' 'gnutls' 'lame' 'libass' 'libfdk-aac' 'l
 makedepends=('git' 'yasm')
 conflicts=('ffmpeg')
 provides=("ffmpeg=$pkgver" "qt-faststart")
-source=("$pkgname"::'git+ssh://git@github.com/basinilya/FFmpeg.git#branch=errorthreshold')
+source=("$pkgname"::'git+ssh://git@github.com/basinilya/FFmpeg.git#branch=errorthreshold2')
 md5sums=('SKIP')
 
 pkgver() {
