@@ -15,6 +15,11 @@ echo "pattern: $1" >&2
 for ((i=0;;i++)); do
   filename=`printf "$1" $i`
   [ -e "$filename" ] || break
+  if [ $i -gt 0 -a x"$prevname" = x"$filename" ]; then
+    >&2 echo "bad pattern: $filename"
+    exit 1
+  fi
+  prevname=$filename
 done
 echo "unoccupied index: $i" >&2
 echo "UNOCCUPIED_INDEX=$i"
