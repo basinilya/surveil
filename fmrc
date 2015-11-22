@@ -29,6 +29,11 @@ fontfile="/usr/share/fonts/TTF/DejaVuSans.ttf"
 
 exnotswitching="between(mod(t,${interval:?}),${switchdur:?},${interval:?})"
 exncam="floor(1+mod(t/${interval:?},${ncams:?}))"
+if [ x"$ncams" = x"1" ]; then
+    exnotswitching=1
+    exncam=1
+fi
+
 fpsfilter="fps=12.5"
 exdynascene="gt(gt(scene,${minscene:?})+eq(mod(n,60),0),0)"
 ptsmono="setpts='PTS-(RTCSTART/(TB*1000000))'"
@@ -228,10 +233,10 @@ fm_rec_cam() {
     for ((i=0; i<ncams2; i++)); do
 
         local outname_pic="[pic$i]"
-        #outname_pic=
+        outname_pic=
 
-        local denoisenow=
-        [ $i -eq 2 ] && denoisenow="${denoise}${denoise:+,}"
+        local denoisenow="${denoise}${denoise:+,}"
+        #denoisenow=
 
         local splitnow=2
 
