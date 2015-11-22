@@ -1,15 +1,19 @@
+device=/dev/v4l/by-id-my/usb-Syntek_Semiconductor_USB_2.0_Video_Capture_Controller-video-index0
+device=/dev/v4l/by-id-my/usb-fushicai_usbtv007_300000000002-video-index0
+device=/dev/v4l/by-id-my/usb-fushicai_usbtv007_300000000002-video-index1
+ncams=1
+ncam_beg=1
+
 recdir="/var/cache/surveillance/cam"
 repldst="/var/cache/surveil/cam"
 minfree=$((200*1000000))
-device=/dev/v4l/by-id/usb-Syntek_Semiconductor_USB_2.0_Video_Capture_Controller-video-index0
+
 virtpref=/dev/v4l/by-id/Loopback_video_device_
 interval=2
-ncams=1
-ncam_beg=3
 
 switchdur=0.320
 #minscene=0.005
-minscene=0.003
+minscene=0.000
 
 seglen=600
 
@@ -227,7 +231,6 @@ fm_rec_cam() {
 
     #outmap+=( -map "[out-last]" -c huffyuv -f segment -segment_time 10 -segment_wrap 3 "/dev/shm/last%d.mkv" )
 
-#virtpref
     for ((i=ncam_beg; i<ncam_end; i++)); do
 
         local outname_pic="[pic$i]"
