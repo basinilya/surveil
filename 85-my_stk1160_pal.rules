@@ -1,1 +1,10 @@
-ACTION=="add", SUBSYSTEM=="video4linux", ATTR{name}=="stk1160", RUN+="/usr/local/bin/my_stk1160_pal.sh"
+ATTR{name}=="stk1160", GOTO="my_v4l2_pal_goodname"
+ATTR{name}=="usbtv", GOTO="my_v4l2_pal_goodname"
+
+GOTO="my_v4l2_pal_end"
+
+LABEL="my_v4l2_pal_goodname"
+
+ACTION=="add", SUBSYSTEM=="video4linux", RUN+="/usr/local/bin/my_stk1160_pal.sh"
+
+LABEL="my_v4l2_pal_end"
