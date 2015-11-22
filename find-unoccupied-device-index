@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+
+
+exec 2> >(exec tee >(exec logger -t "${0##*/}") >&2 )
+
+if [ $# != 1 ]; then
+  >&2 echo "usage: ${0##*/} prefix-%d-suffix"
+  exit 1
+fi
+
+echo "pattern: $1" >&2
+
+for ((i=0;;i++)); do
+  filename=`printf "$1" $i`
+  [ -e "$filename" ] || break
+done
+echo "unoccupied index: $i" >&2
+echo "UNOCCUPIED_INDEX=$i"
