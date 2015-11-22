@@ -4,7 +4,7 @@ minfree=$((200*1000000))
 device=/dev/v4l/by-id/usb-Syntek_Semiconductor_USB_2.0_Video_Capture_Controller-video-index0
 virtpref=/dev/v4l/by-id/Loopback_video_device_
 interval=2
-ncams=3
+ncams=1
 switchdur=0.320
 #minscene=0.005
 minscene=0.003
@@ -122,7 +122,7 @@ fm_mycycle_start() {
 }
 
 fm_mycycle_stop() {
-    if [ -n "${ffmpeg_pid}" ]; then
+    if [ -n "${fm_mycycle_pid}" ]; then
         kill -TERM ${fm_mycycle_pid:?} 2>/dev/null || true
         fm_mycycle_pid=
     fi
