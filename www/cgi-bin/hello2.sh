@@ -109,7 +109,7 @@ case $ext in
     ;;
 'mp4')
     contenttype='video/mp4'
-    fmtargs='-f mp4 -frag_duration 10000000'
+    fmtargs='-acodec mp3 -f ismv -frag_duration 10000000'
     ;;
 *)
     contenttype=$(awk -v ext="$ext" '!/^ *#/ { if ($2 == ext) { print $1; exit; } }' /etc/mime.types) || true

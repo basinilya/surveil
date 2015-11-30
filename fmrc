@@ -100,6 +100,8 @@ fm_monitor_frontend() {
     local d e f s pid
     cd "${repldst:?}"
     while true; do
+
+    exec ssh -oServerAliveInterval=300 dvr /home/il/surveil/fm monitor_backend </dev/null |
     while read d e f; do
         case $e in
         'CREATE')
@@ -122,9 +124,7 @@ fm_monitor_frontend() {
 	    fi
             ;;
         esac
-    done < <(
-        exec ssh -oServerAliveInterval=300 dvr /home/il/surveil/fm monitor_backend </dev/null
-    )
+    done
     sleep 10
     done
 }
