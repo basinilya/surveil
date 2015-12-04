@@ -39,6 +39,8 @@ codecargs="-codec h264 -pix_fmt yuv422p -preset veryfast -crf 30"
 muxerargs="-f segment -segment_time ${seglen:?} -strftime 1"
 #muxerargs=""
 
+# m=4; ffmpeg -y -i test.mkv -vf "deflate,hqdn3d=luma_spatial=24.0,removegrain=m0=$m:m1=$m:m2=$m:m3=$m"
+
 denoise="hqdn3d=luma_spatial=24.0"
 #denoise=
 
