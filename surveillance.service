@@ -4,7 +4,7 @@ Description=surveillance service
 [Service]
 Type=simple
 User=il
-ExecStart=/home/il/surveil/fm record fm_rec_cam
+ExecStart=/home/il/surveil/fm record fm_rec_cam 0
 StandardOutput=journal
 StandardError=inherit
 
