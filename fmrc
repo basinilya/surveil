@@ -157,30 +157,6 @@ fm_killwdog() {
     fi
 }
 
-fm_record() {
-    local i subdir have
-    ffmpeg_pid=
-    fm_mycycle_pid=
-    ffmpeg_watchdog_pid=
-
-    cd "${recdir:?}"
-    subdir="."
-
-    if [ "x$1" = x"fm_rec_cam" -a x"$ncams" != x"1" ]; then
-        fm_mycycle_start
-    fi
-    trap 'fm_mycycle_stop; fm_killffmpeg; fm_killwdog;' EXIT
-
-    while true; do
-        mkdir -p "${subdir:?}/`date --date=tomorrow +%Y%m%d`" "${subdir:?}/`date +%Y%m%d`"
-        echo "writing to `cd "$subdir" && pwd`"
-
-        "$@"
-        [ x"$rc" = x"0" ] || sleep 10
-        #break
-    done
-}
-
 fm_ffmpeg_watchdog() {
     local ffmpeg_pid=${1:?}
     local watchdir=${2:?}
@@ -221,14 +197,47 @@ fm_ffmpeg() {
     fm_killwdog
 }
 
-fm_rec_cam() {
+fm_record() {
+    local subdir have
+    ffmpeg_pid=
+    fm_mycycle_pid=
+    ffmpeg_watchdog_pid=
 
-    local i filterstr= outmap=()
+    cd "${recdir:?}"
+    subdir="."
+
+    if [ "x$1" = x"fm_rec_cam" ]; then
+        local ncams device filterstr outmap=()
+        echo fm_parse_cam "$@"
+        fm_parse_cam "$@"
+
+        if [ x"$ncams" != x"1" ]; then
+            fm_mycycle_start
+        fi
+    fi
+    trap 'fm_mycycle_stop; fm_killffmpeg; fm_killwdog;' EXIT
+
+    while true; do
+        mkdir -p "${subdir:?}/`date --date=tomorrow +%Y%m%d`" "${subdir:?}/`date +%Y%m%d`"
+        echo "writing to `cd "$subdir" && pwd`"
+
+        "$@"
+        [ x"$rc" = x"0" ] || sleep 10
+        #break
+    done
+}
+
+fm_parse_cam() {
+    shift
+
+    local i
+    outmap=()
+    filterstr=
 
     i_device=${1:?}
 
-    local device=${a_device[$i_device]}
-    local ncams=${a_ncams[$i_device]}
+    device=${a_device[$i_device]}
+    ncams=${a_ncams[$i_device]}
     
     local ncam_beg=0
     for ((i=0;i<i_device;i++)); do
@@ -283,7 +292,9 @@ fm_rec_cam() {
         [mid$i]${ptsmono:?},`mkidbox $i`,split=${splitnow:?}[virt$i]${outname_pic}[file$i];[file$i]select='${exdynascene:?}',${denoisenow}${stampbox:?}[out$i]
         "
     done
+}
 
+fm_rec_cam() {
     time fm_ffmpeg $globalargs \
         -f video4linux2 -ts abs -copyts -standard PAL $durarg -mysurvive -i "${device:?}" -filter_complex "$filterstr" "${outmap[@]}"
 }
