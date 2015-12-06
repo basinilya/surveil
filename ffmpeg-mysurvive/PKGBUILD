@@ -2,17 +2,17 @@
 # Contributor: DrZaius <lou at fakeoutdoorsman.com>
 
 pkgname=ffmpeg-mysurvive
-pkgver=r76646.9d05dcd
+pkgver=r77077.c7a02a8
 pkgrel=1
 pkgdesc="Universal multimedia toolkit"
 arch=('i686' 'x86_64')
 license=('GPL')
 url="http://ffmpeg.org/"
-depends=('alsa-lib' 'bzip2' 'freetype2' 'gnutls' 'lame' 'libass' 'libfdk-aac' 'libtheora' 'libva' 'libvdpau' 'libvorbis' 'libvpx' 'opus' 'sdl' 'texinfo' 'libx264' 'x265' 'zlib')
+depends=('alsa-lib' 'bzip2' 'freetype2' 'gnutls' 'lame' 'libass' 'libfdk-aac' 'libtheora' 'libva' 'libvdpau' 'libvorbis' 'libvpx' 'opus' 'sdl' 'texinfo' 'libx264' 'x265-hg' 'zlib')
 makedepends=('git' 'yasm')
 conflicts=('ffmpeg')
 provides=("ffmpeg=$pkgver" "qt-faststart")
-source=("$pkgname"::'git+ssh://git@github.com/basinilya/FFmpeg.git#branch=errorthreshold2')
+source=("$pkgname"::'git+ssh://git@github.com/basinilya/FFmpeg.git#branch=errorthreshold3')
 md5sums=('SKIP')
 
 pkgver() {
@@ -43,6 +43,7 @@ build() {
     --enable-libx265     \
     --enable-nonfree     \
     --enable-shared      \
+    --enable-libv4l2     \
     --enable-x11grab     \
 
   make -j 2
