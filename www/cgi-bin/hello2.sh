@@ -86,6 +86,9 @@ echo "ext=$ext"
 echo "dir=$dir"
 echo "debug=$debug"
 
+if [ x"$debug" = x"head" ]; then
+    exit 0
+fi
 
 fmtargs="-f ${ext:?`nultrap`}"
 vcodecargs='-vcodec h264 -pix_fmt yuv422p -preset veryfast -crf 30'
