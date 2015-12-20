@@ -103,8 +103,8 @@ fm_monitor_frontend() {
     cd "${repldst:?}"
     while true; do
 
-    rc=0
-    exec ssh -oServerAliveInterval=300 dvr /home/il/surveil/fm monitor_backend </dev/null |
+    # this prevents death on ssh error, when errexit and pipefail are on
+    ( exec ssh -oServerAliveInterval=300 dvr /home/il/surveil/fm monitor_backend </dev/null & ) |
     while read d e f; do
         case $e in
         'CREATE')
@@ -127,7 +127,7 @@ fm_monitor_frontend() {
 	    fi
             ;;
         esac
-    done || rc=$?
+    done
     sleep 10
     done
 }
