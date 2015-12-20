@@ -5,6 +5,7 @@ Description=surveillance service
 Type=simple
 User=il
 ExecStart=/home/il/surveil/fm record fm_rec_cam 0
+IgnoreSIGPIPE=false
 StandardOutput=journal
 StandardError=inherit
 

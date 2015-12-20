@@ -5,6 +5,7 @@ Description=surveillance replication service
 Type=simple
 User=il
 ExecStart=/home/il/surveil/fm monitor_frontend
+IgnoreSIGPIPE=false
 StandardOutput=journal
 StandardError=inherit
 

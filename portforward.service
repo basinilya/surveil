@@ -6,6 +6,7 @@ Type=simple
 User=il
 KillMode=control-group
 ExecStart=/home/il/surveil/portforward/bin/portforward -p 010-basinsrv
+IgnoreSIGPIPE=false
 StandardOutput=journal
 StandardError=inherit
 
