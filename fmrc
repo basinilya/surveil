@@ -103,6 +103,7 @@ fm_monitor_frontend() {
     cd "${repldst:?}"
     while true; do
 
+    rc=0
     exec ssh -oServerAliveInterval=300 dvr /home/il/surveil/fm monitor_backend </dev/null |
     while read d e f; do
         case $e in
@@ -126,7 +127,7 @@ fm_monitor_frontend() {
 	    fi
             ;;
         esac
-    done
+    done || rc=$?
     sleep 10
     done
 }
