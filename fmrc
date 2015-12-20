@@ -1,21 +1,32 @@
 a_device=(
-    /dev/v4l/by-id-my/usb-Syntek_Semiconductor_USB_2.0_Video_Capture_Controller-video-index0
-    /dev/v4l/by-id-my/usb-fushicai_usbtv007_300000000002-video-index0
-    /dev/v4l/by-id-my/usb-fushicai_usbtv007_300000000002-video-index1
+    /dev/v4l/by-path/pci-0000:00:12.2-usb-0:3:1.0-video-index0
+    /dev/v4l/by-path/pci-0000:00:13.2-usb-0:5:1.0-video-index0
+    /dev/v4l/by-path/pci-0000:00:10.1-usb-0:1:1.0-video-index0
     )
 
 
 a_ncams=(
     1
     1
-    1
+    2
     )
 
 a_minscene=(
     0.000
     0.003
-    0.000
+    0.003
+    0.003
     )
+
+a_denoise=(
+    'hqdn3d=luma_spatial=24.0'
+    'deflate,hqdn3d=luma_spatial=24.0,removegrain=m0=4:m1=4:m2=4:m3=4'
+    'hqdn3d=luma_spatial=24.0'
+    'deflate,hqdn3d=luma_spatial=24.0,removegrain=m0=4:m1=4:m2=4:m3=4'
+)
+
+LF='
+'
 
 recdir="/var/cache/surveillance/cam"
 repldst="/var/cache/surveil/cam"
@@ -41,7 +52,7 @@ muxerargs="-f segment -segment_time ${seglen:?} -strftime 1"
 
 # m=4; ffmpeg -y -i test.mkv -vf "deflate,hqdn3d=luma_spatial=24.0,removegrain=m0=$m:m1=$m:m2=$m:m3=$m"
 
-denoise="hqdn3d=luma_spatial=24.0"
+#denoise="hqdn3d=luma_spatial=24.0"
 #denoise=
 
 fontfile="/usr/share/fonts/TTF/DejaVuSans.ttf"
@@ -165,7 +176,7 @@ fm_ffmpeg_watchdog() {
 
     cd "$watchdir"
     while true; do
-        "$THISDIR/cleandisk" --dir . --minfree "$minfree"
+        >/dev/null "$THISDIR/cleandisk" --lockdir --dir . --minfree "$minfree"
         mkdir -p "`date --date=tomorrow +%Y%m%d`"
         newstate=`du -ksx .`
         #newstate="y"
@@ -255,7 +266,7 @@ fm_parse_cam() {
 
     #filterstr="${filterstr}${filterstr:+;}[0:v]${fpsfilter:?},${ptsmono:?}[out-last]"
 
-    filterstr="${filterstr}${filterstr:+;}[0:v]${fpsfilter:?},select=outputs=${ncams:?}:expr='${exnotswitching:?}*${exncam:?}'"
+    filterstr="${filterstr}${filterstr:+;}${LF}[0:v]${fpsfilter:?},select=outputs=${ncams:?}:expr='${exnotswitching:?}*${exncam:?}'"
 
     local ncam_end=$((ncam_beg + ncams))
 
@@ -272,6 +283,7 @@ fm_parse_cam() {
     for ((i=ncam_beg; i<ncam_end; i++)); do
 
         local minscene=${a_minscene[$i]}
+        local denoise=${a_denoise[$i]}
         local exdynascene="gt(gt(scene,${minscene:?})+eq(mod(n,60),0),0)"
 
         local outname_pic="[pic$i]"
@@ -290,14 +302,14 @@ fm_parse_cam() {
         outmap+=( -map "[out$i]" $codecargs $muxerargs "${subdir:?}/${day:?}/cam$i-${time:?}.mkv" )
 
         filterstr="${filterstr}${filterstr:+;}
-        [mid$i]${ptsmono:?},`mkidbox $i`,split=${splitnow:?}[virt$i]${outname_pic}[file$i];[file$i]select='${exdynascene:?}',${denoisenow}${stampbox:?}[out$i]
+        [mid$i]${ptsmono:?},`mkidbox $i`,split=${splitnow:?}[virt$i]${outname_pic}[file$i];${LF}[file$i]select='${exdynascene:?}',${denoisenow}${stampbox:?}[out$i]
         "
     done
 }
 
 fm_rec_cam() {
     time fm_ffmpeg $globalargs \
-        -f video4linux2 -ts abs -copyts -standard PAL $durarg -mysurvive -i "${device:?}" -filter_complex "$filterstr" "${outmap[@]}"
+        -f video4linux2 -use_libv4l2 1 -ts abs -copyts -standard PAL $durarg -mysurvive -i "${device:?}" -filter_complex "$filterstr" "${outmap[@]}"
 }
 
 fm_resetup() {
