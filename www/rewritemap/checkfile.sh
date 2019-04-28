@@ -8,20 +8,14 @@ UNTRAP=${0%/*}/untrap
 
 
 fn_aaa() {
-  # aa
-  exec 0<"${f:?}"
+  exec 4<"${f:?}"
 
   coproc LC_ALL=en_US.UTF-8 $UNTRAP --sig=INT=DEFAULT -- inotifywait -e close_write -- /proc/self/fd/0 2>&1
-  #inotifywait_out=${COPROC[0]}
-  eval "exec 4<&${COPROC[0]} ${COPROC[0]}<&- ${COPROC[1]}>&-"
-  inotifywait_pid=$!
-  cat <&4
+  eval "exec 0<&${COPROC[0]} ${COPROC[0]}<&- ${COPROC[1]}>&-; inotifywait_pid=$COPROC_PID"
+  trap "kill $inotifywait_pid" EXIT
 
-wait
-exit 1
-  {
     read -r h
-    read -r x
+    read -r x || true
     case $x in
     'Watches established.')
         :
@@ -35,9 +29,15 @@ exit 1
     case $modes in
         *$'\naw'*)
             >&2 echo opened for writing
+            ;;
+        *)
+            >&2 echo not opened for writing
+            kill ${inotifywait_pid}
+            exec <&4 cat
+            exit 0 
+            ;;
     esac
-    #tail -c +1 -f -- "${f:?}" &
-  }
+    exec <&4 tail --pid=${inotifywait_pid} -c +1 -f
 }
 
 fn_bbb() {
