@@ -22,6 +22,7 @@ fn_aaa() {
   eval "exec 0<&${COPROC[0]} ${COPROC[0]}<&- 5>&${COPROC[1]} ${COPROC[1]}>&-; child_pid=$COPROC_PID"
 
     read -r inotifywait_pid
+    trap "kill $inotifywait_pid" EXIT
     exec 5>&- # proceed
     wait $child_pid
     read -r h
@@ -44,7 +45,6 @@ fn_aaa() {
             >&2 echo not opened for writing
             kill ${inotifywait_pid}
             exec <&4 cat
-            exit 0 
             ;;
     esac
     exec <&4 tail --pid=${inotifywait_pid} -c +1 -f
