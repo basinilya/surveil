@@ -1,0 +1,19 @@
+#!/usr/bin/perl
+
+use Getopt::Long;
+
+GetOptions(
+    'help' => sub {
+        print "usage: $0 [--sig={INT|HUP|...}={IGNORE|DEFAULT}]... COMMAND [ARG]...\n";
+        exit 0;
+    },
+    'sig=s%' =>
+    sub {
+        my $action = $_[2];
+        my $signame = $_[1];
+        die "bad action $action" unless ($action eq "IGNORE" or $action eq "DEFAULT");
+        die "bad signame $signame" if ($signame eq "__DIE__" or $signame eq "__WARN__");
+        $SIG{$signame} = $action;
+    }) or exit 1;
+
+exec { $ARGV[0] } @ARGV or die "couldn't exec $ARGV[0]: $!";

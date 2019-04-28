@@ -2,10 +2,24 @@
 
 set -e
 
+UNTRAP=${0%/*}/untrap
+
+#$UNTRAP --sig=INT=DEFAULT -- bash -c 'trap "echo got signal" INT; sleep 20' &
+
+
 fn_aaa() {
   # aa
   exec 0<"${f:?}"
-  LC_ALL=en_US.UTF-8 inotifywait -e close_write -- /proc/self/fd/0 2>&1 | {
+
+  coproc LC_ALL=en_US.UTF-8 $UNTRAP --sig=INT=DEFAULT -- inotifywait -e close_write -- /proc/self/fd/0 2>&1
+  #inotifywait_out=${COPROC[0]}
+  eval "exec 4<&${COPROC[0]} ${COPROC[0]}<&- ${COPROC[1]}>&-"
+  inotifywait_pid=$!
+  cat <&4
+
+wait
+exit 1
+  {
     read -r h
     read -r x
     case $x in
