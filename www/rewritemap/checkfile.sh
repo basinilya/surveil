@@ -10,10 +10,20 @@ UNTRAP=${0%/*}/untrap
 fn_aaa() {
   exec 4<"${f:?}"
 
-  coproc LC_ALL=en_US.UTF-8 $UNTRAP --sig=INT=DEFAULT -- inotifywait -e close_write -- /proc/self/fd/0 2>&1
-  eval "exec 0<&${COPROC[0]} ${COPROC[0]}<&- ${COPROC[1]}>&-; inotifywait_pid=$COPROC_PID"
-  trap "kill $inotifywait_pid" EXIT
+  set -- inotifywait -e close_write -- /proc/self/fd/4
+  coproc {
+    # tail won't reap children so forking a grandchild
+    {
+        read -r proceed || true
+        LC_ALL=en_US.UTF-8 exec $UNTRAP --sig=INT=DEFAULT -- "$@" 2>&1
+    } <&0 &
+    echo $!
+  }
+  eval "exec 0<&${COPROC[0]} ${COPROC[0]}<&- 5>&${COPROC[1]} ${COPROC[1]}>&-; child_pid=$COPROC_PID"
 
+    read -r inotifywait_pid
+    exec 5>&- # proceed
+    wait $child_pid
     read -r h
     read -r x || true
     case $x in
@@ -39,18 +49,6 @@ fn_aaa() {
     esac
     exec <&4 tail --pid=${inotifywait_pid} -c +1 -f
 }
-
-fn_bbb() {
-    lsof -- "${f:?}" | while read -r c pid u fd t d s i name; do
-      case $fd in
-      *w*)
-      echo tail -c +1 -f --pid=$pid -- "$f"
-      break;
-      ;;
-      esac
-    done
-}
-
 
 f=${1:?}
 fn_aaa
