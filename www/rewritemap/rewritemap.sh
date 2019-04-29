@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 set -e
 
 fn_islastfile() {
@@ -7,6 +8,8 @@ fn_islastfile() {
 shopt -s nullglob dotglob
 
 f=${1:?}
+[ ! -d "$f/" ] || return 1
+
 name=${f##*/}
 dir=.
 if [ x"$name" != x"$f" ]; then
@@ -18,10 +21,8 @@ cd -- "$dir"
 
 v=continue
 
-found=
 for x in *; do
     if [ x"$x" = x"$name" ]; then
-        found=x
         v="return 1"
         continue
     fi
@@ -33,4 +34,9 @@ fi
 return 0
 }
 
-fn_islastfile "$@"
+while read -r u; do
+    fn_islastfile "$u" && r=yes || r=no
+    printf '%s\n' "$r"
+done
+
+#fn_islastfile "$@"
