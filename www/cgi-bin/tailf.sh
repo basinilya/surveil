@@ -121,7 +121,7 @@ fn_tailf() {
         exit 1
         ;;
     esac
-    modes=`lsof -Fa -- "${f:?}"`
+    modes=`/usr/local/bin/lsof-suid -Fa -- "${f:?}"`
     case $modes in
         *$'\naw'*)
             >&2 echo file is opened for writing
