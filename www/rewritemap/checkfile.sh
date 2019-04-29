@@ -1,13 +1,12 @@
 #!/bin/bash
 
-set -e
-
-UNTRAP=${0%/*}/untrap
-
-#$UNTRAP --sig=INT=DEFAULT -- bash -c 'trap "echo got signal" INT; sleep 20' &
 
 
-fn_aaa() {
+fn_tailf() {
+  set -e
+  bs0=${BASH_SOURCE[0]}
+  UNTRAP=${bs0%/*}/../rewritemap/untrap
+  f=${1:?}
   exec 4<"${f:?}"
 
   set -- inotifywait -e close_write -- /proc/self/fd/4
@@ -44,11 +43,10 @@ fn_aaa() {
         *)
             >&2 echo not opened for writing
             kill ${inotifywait_pid}
-            exec <&4 cat
+            #exec <&4 cat
             ;;
     esac
+    $fn_tailf__pre
     exec <&4 tail --pid=${inotifywait_pid} -c +1 -f
 }
 
-f=${1:?}
-fn_aaa
