@@ -88,6 +88,20 @@ if [ x"$debug" = x"head" ]; then
     exit 0
 fi
 
+fn_lsof() {
+  (
+  set +o pipefail # to ignore SIGPIPE
+
+  # when unavailable NFS share, lsof hangs unless '-b' is specified
+  # however, passing names to `lsof -b` fails
+  # This is why we have to filter lsof output
+  /usr/local/bin/lsof-suid -w -b -Fan | awk -v f="$1" '
+    /^a/ { mode=$0; }
+    /^n/ { if (f == substr($0,2) && index(mode,"w") >= 2) { success=1; exit; } }
+    END { exit(!success); }'
+  )
+}
+
 fn_tailf() {
   set -e
   bs0=${BASH_SOURCE[0]}
@@ -121,17 +135,13 @@ fn_tailf() {
         exit 1
         ;;
     esac
-    modes=`/usr/local/bin/lsof-suid -Fa -- "${f:?}"`
-    case $modes in
-        *$'\naw'*)
+    if fn_lsof "${f:?}"; then
             >&2 echo file is opened for writing
-            ;;
-        *)
+    else 
             >&2 echo file not opened for writing
             kill ${inotifywait_pid}
             #exec <&14 cat
-            ;;
-    esac
+    fi
     $fn_tailf__pre
     exec <&14 tail --pid=${inotifywait_pid} -c +1 -f
 }
