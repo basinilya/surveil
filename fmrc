@@ -30,7 +30,7 @@ LF='
 
 recdir="/var/cache/surveillance/cam"
 repldst="/var/cache/surveil/cam"
-minfree=$((200*1000000))
+minfree=$((70000*1000000))
 
 virtpref=/dev/v4l/by-id/Loopback_video_device_
 interval=2
