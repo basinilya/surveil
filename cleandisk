@@ -118,7 +118,7 @@ if [ $freeup -gt 0 ]; then
         sz=$((sz*512))
         echo "deleting $p (type=$type, mtime='`date -d @$mtime`')"
         case $type in
-        d) rmcmd=rmdir;;
+        d) rmcmd="rmdir --ignore-fail-on-non-empty";;
         f) rmcmd=${rmfilecmd:?};;
         *) rmcmd=rm;;
         esac
