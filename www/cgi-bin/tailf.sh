@@ -1,6 +1,9 @@
 #!/bin/bash
 
-headers_sent=
+# Goals:
+# - serve a growing file and don't send EOF until the writer closed the file
+# - send EOF immediately after the writer closed the file
+# tail, lsof, and inotifywait must be installed
 
 switchplain() {
     exec 1>&5 2>&1
@@ -10,8 +13,13 @@ switchplain() {
     headers_sent=x
 }
 
-set -e
-set -o pipefail
+fn_404() {
+  exec 1>&5
+  echo "Status: 404 Not Found"
+  echo ""
+  headers_sent=x
+  exit 1
+}
 
 nultrap() {
     if [ -z "$headers_sent" ]; then
@@ -27,10 +35,6 @@ errtrap() {
     fi
     echo "ERROR line $1: Command exited with status $es.">&2
 }
-exec 5>&1 1>&2
-trap 'errtrap $LINENO' ERR
-exec 1> >(logger -t cgi) 2>&1
-
 #This code for getting code from post data is from http://oinkzwurgl.org/bash_cgi and
 #was written by Phillippe Kehi <phkehi@gmx.net> and flipflip industries
 
@@ -56,49 +60,74 @@ function cgi_decodevar()
     return
 }
 
-for s in file debug; do
-    eval "$s="
-done
+fn_tailf_main() {
+  headers_sent=
+  set -e
+  set -o pipefail
 
-saveIFS=$IFS
-IFS='&'
-for kv in ${QUERY_STRING:?`nultrap`}; do
-    case $kv in
-    file=*|debug=*)
-    eval "v=\$${kv%%=*}"
-    if [ -z "$v" ]; then
-        cgi_decodevar "${kv#*=}"
-        eval "${kv%%=*}=\$cgi_decodevar_val"
-    fi
-    ;;
-    esac
-done
-IFS=$saveIFS
+  exec 5>&1 1>&2
+  trap 'errtrap $LINENO' ERR
+  exec 1> >(logger -t cgi) 2>&1
 
-if [ x"$debug" != x"" ]; then
-    switchplain
-fi
+  for s in file debug; do
+      eval "$s="
+  done
 
-id
-echo "QUERY_STRING=$QUERY_STRING"
-echo "file=$file"
-echo "debug=$debug"
+  saveIFS=$IFS
+  IFS='&'
+  for kv in ${QUERY_STRING:?`nultrap`}; do
+      case $kv in
+      file=*|debug=*)
+      eval "v=\$${kv%%=*}"
+      if [ -z "$v" ]; then
+          cgi_decodevar "${kv#*=}"
+          eval "${kv%%=*}=\$cgi_decodevar_val"
+      fi
+      ;;
+      esac
+  done
+  IFS=$saveIFS
 
-if [ x"$debug" = x"head" ]; then
-    exit 0
-fi
+  if [ x"$debug" != x"" ]; then
+      switchplain
+  fi
 
-fn_lsof() {
+  id
+  echo "QUERY_STRING=$QUERY_STRING"
+  echo "file=$file"
+  echo "debug=$debug"
+
+  if [ x"$debug" = x"head" ]; then
+      exit 0
+  fi
+
+  contenttype=`file -b --mime-type "$file"`
+  hdr="Content-type: $contenttype"$'\n\n'
+  fn_tailf__pre=fn_fn_tailf__pre
+  fn_tailf "$file"
+}
+
+fn_lsof_old() {
   (
   set +o pipefail # to ignore SIGPIPE
 
   # when unavailable NFS share, lsof hangs unless '-b' is specified
   # however, passing names to `lsof -b` fails
   # This is why we have to filter lsof output
+  # This approach will not cause auto-mounting, but it has the flaw that
+  # the file won't be found if it was opened using an alternative path
   /usr/local/bin/lsof-suid -w -b -Fan | awk -v f="$1" '
     /^a/ { mode=$0; }
     /^n/ { if (f == substr($0,2) && index(mode,"w") >= 2) { success=1; exit; } }
     END { exit(!success); }'
+  )
+}
+
+fn_lsof() {
+  (
+  set +o pipefail # to ignore SIGPIPE
+
+  /usr/local/bin/lsof-suid -w -Fan -- "$1" | grep 'a.*w' >/dev/null
   )
 }
 
@@ -107,7 +136,7 @@ fn_tailf() {
   bs0=${BASH_SOURCE[0]}
   UNTRAP=${bs0%/*}/../rewritemap/untrap
   f=${1:?}
-  exec 14<"${f:?}"
+  exec 14<"${f:?}" || fn_404
 
   set -- inotifywait -e close_write -- /proc/self/fd/14
   coproc {
@@ -146,12 +175,12 @@ fn_tailf() {
     exec <&14 tail --pid=${inotifywait_pid} -c +1 -f
 }
 
-contenttype=`file -b --mime-type "$file"`
-hdr="Content-type: $contenttype"$'\n\n'
 fn_fn_tailf__pre() {
   exec 1>&5
   printf %s "$hdr"
 }
-fn_tailf__pre=fn_fn_tailf__pre
 
-fn_tailf "$file"
+if [[ "$0" = "${BASH_SOURCE[0]}" ]]; then
+  fn_tailf_main "$@"
+fi
+
